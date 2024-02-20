@@ -2,5 +2,6 @@
     /* filter: invert(100%); */
     justify-content: center;
     align-items: center;
-    display: flex;
+    display: block;
+    width: 100%;
 }

@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as temp from 'temp';
 import * as path from 'path';
 import {PdfTeXEngine} from './PdfTeXEngine.js';
+import {PDFDocument} from 'pdf-lib';
 
 interface MyPluginSettings {
 	package_url: string,
@@ -96,6 +97,20 @@ export default class MyPlugin extends Plugin {
 		return Md5.hashStr(source.trim());
 	}
 
+	async pdfToHtml(pdfData: any) {
+		const {width, height} = await this.getPdfDimensions(pdfData);
+		const ratio = width / height;
+		const pdfblob = new Blob([pdfData], { type: 'application/pdf' });
+		const objectURL = URL.createObjectURL(pdfblob);
+		return `<object data="${objectURL}#view=Fit&toolbar=0" type="application/pdf" class="block-lanuage-latex" style="width:100%; aspect-ratio:${ratio}"}></object>`;
+	}
+
+	async getPdfDimensions(pdf: any): Promise<{width: number, height: number}> {
+		const pdfDoc = await PDFDocument.load(pdf);
+		const firstPage = pdfDoc.getPages()[0];
+		const {width, height} = firstPage.getSize();
+		return {width, height};
+	}
 
 	async renderLatexToElement(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
 		return new Promise<void>((resolve, reject) => {
@@ -107,9 +122,7 @@ export default class MyPlugin extends Plugin {
 			if (this.settings.enableCache && this.cache.has(md5Hash) && fs.existsSync(pdfPath)) {
 				console.log("Using cached PDF: ", md5Hash);
 				let pdfData = fs.readFileSync(pdfPath);
-				const pdfblob = new Blob([pdfData], { type: 'application/pdf' });
-				const objectURL = URL.createObjectURL(pdfblob);
-				el.innerHTML = `<object data="${objectURL}" type="application/pdf" width="100%" height="100%"></object>`;
+				this.pdfToHtml(pdfData).then((html)=>{el.innerHTML = html; resolve();});
 				this.addFileToCache(md5Hash, ctx.sourcePath);
 				resolve();
 			}
@@ -118,10 +131,7 @@ export default class MyPlugin extends Plugin {
 
 				this.renderLatexToPDF(source, md5Hash).then((r: any) => {
 					if (this.settings.enableCache) this.addFileToCache(md5Hash, ctx.sourcePath);
-				const pdfblob = new Blob([r.pdf], { type: 'application/pdf' });
-				const objectURL = URL.createObjectURL(pdfblob);
-				el.innerHTML = `<object data="${objectURL}" type="application/pdf" width="100%" height="100%"></object>`;
-				console.log(typeof r.pdf);
+				this.pdfToHtml(r.pdf).then((html)=>{el.innerHTML = html; resolve();});
 				fs.writeFileSync(pdfPath, r.pdf);
 				resolve();
 				}
@@ -146,31 +156,6 @@ export default class MyPlugin extends Plugin {
 				}
 				resolve(r);
 				});
-			})
-		});
-	}
-
-
-	renderLatexToSVG(source: string, md5Hash: string, svgPath: string) {
-		return new Promise(async (resolve, reject) => {
-			source = this.formatLatexSource(source);
-
-			temp.mkdir("obsidian-latex-renderer", (err, dirPath) => {
-				if (err) reject(err);
-				fs.writeFileSync(path.join(dirPath, md5Hash + ".tex"), source);
-				exec(
-					this.settings.command.replace(/{file-path}/g, md5Hash)
-					,
-					{ timeout: this.settings.timeout, cwd: dirPath },
-					async (err, stdout, stderr) => {
-						if (err) reject([err, stdout, stderr]);
-						else {
-							if (this.settings.enableCache) fs.copyFileSync(path.join(dirPath, md5Hash + ".svg"), svgPath);
-							let svgData = fs.readFileSync(path.join(dirPath, md5Hash + ".svg"));
-							resolve(svgData);
-						};
-					},
-				);
 			})
 		});
 	}
