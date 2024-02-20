@@ -89,7 +89,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	formatLatexSource(source: string) {
-		return "\\documentclass{standalone}\n" + source;
+		return source;
 	}
 
 	hashLatexSource(source: string) {
@@ -106,18 +106,23 @@ export default class MyPlugin extends Plugin {
 			// Could have a case where pdfCache has the key but the cached file has been deleted
 			if (this.settings.enableCache && this.cache.has(md5Hash) && fs.existsSync(pdfPath)) {
 				console.log("Using cached PDF: ", md5Hash);
-				el.innerHTML = `<object data="${pdfPath}" type="application/pdf" width="100%" height="100%"></object>`;
+				let pdfData = fs.readFileSync(pdfPath);
+				const pdfblob = new Blob([pdfData], { type: 'application/pdf' });
+				const objectURL = URL.createObjectURL(pdfblob);
+				el.innerHTML = `<object data="${objectURL}" type="application/pdf" width="100%" height="100%"></object>`;
 				this.addFileToCache(md5Hash, ctx.sourcePath);
 				resolve();
 			}
 			else {
 				console.log("Rendering PDF: ", md5Hash);
 
-				this.renderLatexToPDF(source, md5Hash, pdfPath).then((pdf: any) => {
+				this.renderLatexToPDF(source, md5Hash).then((r: any) => {
 					if (this.settings.enableCache) this.addFileToCache(md5Hash, ctx.sourcePath);
-				const pdfblob = new Blob([pdf], { type: 'application/pdf' });
+				const pdfblob = new Blob([r.pdf], { type: 'application/pdf' });
 				const objectURL = URL.createObjectURL(pdfblob);
 				el.innerHTML = `<object data="${objectURL}" type="application/pdf" width="100%" height="100%"></object>`;
+				console.log(typeof r.pdf);
+				fs.writeFileSync(pdfPath, r.pdf);
 				resolve();
 				}
 				).catch(err => { el.innerHTML = err; reject(err); });
@@ -125,53 +130,50 @@ export default class MyPlugin extends Plugin {
 		}).then(() => { if (this.settings.enableCache) setTimeout(() => this.cleanUpCache(), 1000); });
 	}
 
-	renderLatexToPDF(source: string, md5Hash: string, pdfPath: string) {
+	renderLatexToPDF(source: string, md5Hash: string) {
 		return new Promise(async (resolve, reject) => {
 			source = this.formatLatexSource(source);
 
 			temp.mkdir("obsidian-swiftlatex-renderer", (err, dirPath) => {
 				if (err) reject(err);
 				fs.writeFileSync(path.join(dirPath, md5Hash + ".tex"), source);
-			this.pdfEngine.writeMemFSFile("main.tex", source);
-			this.pdfEngine.setEngineMainFile("main.tex");
-			let r = this.pdfEngine.compileLaTeX();
-			if (r.status != 0) {
-				// manage latex errors
-				reject(r.log);
-			}
-			let pdf = r.pdf;
-			// write to cache
-			fs.writeFileSync(pdfPath, pdf);
-
-			resolve(pdf);
+				this.pdfEngine.writeMemFSFile("main.tex", source);
+				this.pdfEngine.setEngineMainFile("main.tex");
+				this.pdfEngine.compileLaTeX().then((r: any) => {
+				if (r.status != 0) {
+					// manage latex errors
+					reject(r.log);
+				}
+				resolve(r);
+				});
 			})
 		});
 	}
 
 
-	// renderLatexToSVG(source: string, md5Hash: string, svgPath: string) {
-	// 	return new Promise(async (resolve, reject) => {
-	// 		source = this.formatLatexSource(source);
+	renderLatexToSVG(source: string, md5Hash: string, svgPath: string) {
+		return new Promise(async (resolve, reject) => {
+			source = this.formatLatexSource(source);
 
-	// 		temp.mkdir("obsidian-latex-renderer", (err, dirPath) => {
-	// 			if (err) reject(err);
-	// 			fs.writeFileSync(path.join(dirPath, md5Hash + ".tex"), source);
-	// 			exec(
-	// 				this.settings.command.replace(/{file-path}/g, md5Hash)
-	// 				,
-	// 				{ timeout: this.settings.timeout, cwd: dirPath },
-	// 				async (err, stdout, stderr) => {
-	// 					if (err) reject([err, stdout, stderr]);
-	// 					else {
-	// 						if (this.settings.enableCache) fs.copyFileSync(path.join(dirPath, md5Hash + ".svg"), svgPath);
-	// 						let svgData = fs.readFileSync(path.join(dirPath, md5Hash + ".svg"));
-	// 						resolve(svgData);
-	// 					};
-	// 				},
-	// 			);
-	// 		})
-	// 	});
-	// }
+			temp.mkdir("obsidian-latex-renderer", (err, dirPath) => {
+				if (err) reject(err);
+				fs.writeFileSync(path.join(dirPath, md5Hash + ".tex"), source);
+				exec(
+					this.settings.command.replace(/{file-path}/g, md5Hash)
+					,
+					{ timeout: this.settings.timeout, cwd: dirPath },
+					async (err, stdout, stderr) => {
+						if (err) reject([err, stdout, stderr]);
+						else {
+							if (this.settings.enableCache) fs.copyFileSync(path.join(dirPath, md5Hash + ".svg"), svgPath);
+							let svgData = fs.readFileSync(path.join(dirPath, md5Hash + ".svg"));
+							resolve(svgData);
+						};
+					},
+				);
+			})
+		});
+	}
 
 	async saveCache() {
 		let temp = new Map();

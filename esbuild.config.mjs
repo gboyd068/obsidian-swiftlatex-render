@@ -14,8 +14,11 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = (process.argv[2] === "production");
 
 const context = await esbuild.context({
+	bundle: true,
 	logLevel: "info",
 	platform: "node",
+	target: ['node10.4'],
+	format: "cjs",
 	banner: {
 		js: banner,
 	},
@@ -40,7 +43,10 @@ const context = await esbuild.context({
 	plugins: [
 		inlineWorkerPlugin(
 			{
+				bundle: true,
+				target: ['node10.4'],
 				platform: "node",
+				format: "cjs",
 				plugins: [wasmLoader({mode: "embedded"})],
 			}),
 			wasmLoader({mode: "embedded"})
