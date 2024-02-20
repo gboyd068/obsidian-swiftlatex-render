@@ -1,9 +1,9 @@
 import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder } from 'obsidian';
-import { PdfTeXEngine } from 'PdfTeXEngine';
 import { Md5 } from 'ts-md5';
 import * as fs from 'fs';
 import * as temp from 'temp';
 import * as path from 'path';
+import {PdfTeXEngine} from './PdfTeXEngine.js';
 
 interface MyPluginSettings {
 	package_url: string,
@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	cacheFolderPath: string;
+	pluginFolderPath: string;
 	pdfEngine: any;
 
 	cache: Map<string, Set<string>>; // Key: md5 hash of latex source. Value: Set of file path names.
@@ -29,7 +30,27 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		if (this.settings.enableCache) await this.loadCache();
+		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins\\obsidian-swiftlatex-render\\");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
+
+		console.log(path.join(this.pluginFolderPath, "swiftlatexpdftex.js"));
+		// console.log(process.cwd());
+		// const sourcePath = path.join(this.pluginFolderPath, "swiftlatexpdftex.js");
+
+		// if (!fs.existsSync(sourcePath)) {
+		// 	console.error(`Source file does not exist: ${sourcePath}`);
+		// } else if (!fs.existsSync(this.pluginFolderPath)) {
+		// 	console.error(`Plugin folder does not exist: ${this.pluginFolderPath}`);
+		// } else {
+		// 	try {
+		// 		fs.copyFileSync(sourcePath, "app://obsidian.md/swiftlatexpdftex.js");
+		// 	} catch (err) {
+		// 		console.error(`Error copying file: ${err}`);
+		// 	}
+		// }
+
+		// console.log(__dirname);
+
 		this.pdfEngine = new PdfTeXEngine();
 		await this.pdfEngine.loadEngine();
 		this.pdfEngine.setTexliveEndpoint(this.settings.package_url);

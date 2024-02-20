@@ -1,9 +1,9 @@
 {
-	"id": "obsidian-latex-render",
-	"name": "Latex Renderer",
+	"id": "obsidian-swiftlatex-render",
+	"name": "SwiftLatex Renderer",
 	"version": "0.1.0",
 	"minAppVersion": "1",
 	"description": "",
-	"author": "fenjalien",
+	"author": "gboyd068",
 	"isDesktopOnly": true
 }

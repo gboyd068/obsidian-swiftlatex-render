@@ -1,6 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import inlineWorkerPlugin from "esbuild-plugin-inline-worker";
+import {wasmLoader} from "esbuild-plugin-wasm";
 
 const banner =
 `/*
@@ -12,6 +14,8 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = (process.argv[2] === "production");
 
 const context = await esbuild.context({
+	logLevel: "info",
+	platform: "node",
 	banner: {
 		js: banner,
 	},
@@ -32,12 +36,15 @@ const context = await esbuild.context({
 		"@lezer/highlight",
 		"@lezer/lr",
 		...builtins],
-	format: "cjs",
-	target: "es2018",
-	logLevel: "info",
-	sourcemap: prod ? false : "inline",
-	treeShaking: true,
 	outfile: "main.js",
+	plugins: [
+		inlineWorkerPlugin(
+			{
+				platform: "node",
+				plugins: [wasmLoader({mode: "embedded"})],
+			}),
+			wasmLoader({mode: "embedded"})
+],
 });
 
 if (prod) {

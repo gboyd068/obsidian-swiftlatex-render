@@ -60,7 +60,7 @@ var EngineStatus;
     EngineStatus[EngineStatus["Busy"] = 3] = "Busy";
     EngineStatus[EngineStatus["Error"] = 4] = "Error";
 })(EngineStatus = exports.EngineStatus || (exports.EngineStatus = {}));
-var ENGINE_PATH = 'swiftlatexpdftex.js';
+import Worker from "./swiftlatexpdftex.worker.js";
 var CompileResult = /** @class */ (function () {
     function CompileResult() {
         this.pdf = undefined;
@@ -86,7 +86,7 @@ var PdfTeXEngine = /** @class */ (function () {
                         }
                         this.latexWorkerStatus = EngineStatus.Init;
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.latexWorker = new Worker(ENGINE_PATH);
+                                _this.latexWorker = Worker();
                                 _this.latexWorker.onmessage = function (ev) {
                                     var data = ev['data'];
                                     var cmd = data['result'];
@@ -245,3 +245,4 @@ var PdfTeXEngine = /** @class */ (function () {
     return PdfTeXEngine;
 }());
 exports.PdfTeXEngine = PdfTeXEngine;
+export {PdfTeXEngine};
