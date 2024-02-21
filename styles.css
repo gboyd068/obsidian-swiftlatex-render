@@ -5,3 +5,12 @@
     display: block;
     width: 100%;
 }
+
+.block-latex-error {
+    /* filter: invert(100%); */
+    justify-content: center;
+    display: block;
+    width: 100%;
+    background-color: white;
+    color: black;
+}

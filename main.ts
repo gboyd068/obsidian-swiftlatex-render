@@ -135,7 +135,7 @@ export default class MyPlugin extends Plugin {
 				fs.writeFileSync(pdfPath, r.pdf);
 				resolve();
 				}
-				).catch(err => { el.innerHTML = err; reject(err); });
+				).catch(err => { el.innerHTML = `<div class="block-latex-error">${err}</div>`; reject(err); });
 			}
 		}).then(() => { if (this.settings.enableCache) setTimeout(() => this.cleanUpCache(), 1000); });
 	}
