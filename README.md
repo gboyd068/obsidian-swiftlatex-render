@@ -3,7 +3,7 @@
 This plugin renders codeblocks with the label `latex` into a pdf and displays them inline in the note on preview. This is achieved using the SwiftLaTeX wasm LaTeX compiler built into the plugin, which has no other dependencies. Packages are fetched on-demand from https://texlive2.swiftlatex.com/, by default.
 
 # Setup
-Just install the plugin!
+Just install the plugin by placing the files from the release into the folder .obsidian/plugins/obsidian-swiftlatex-render
 
 # Usage
 The content inside of `latex` code blocks will be rendered using the given command. You can load any packages you need with `\usepackage{}`.
