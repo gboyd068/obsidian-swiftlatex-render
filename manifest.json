@@ -1,6 +1,6 @@
 {
 	"id": "obsidian-swiftlatex-render",
-	"name": "SwiftLatex Renderer",
+	"name": "SwiftLaTeX Renderer",
 	"version": "0.1.0",
 	"minAppVersion": "1",
 	"description": "",

@@ -267,6 +267,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Package Fetching URL')
+			.setDesc('default: https://texlive2.swiftlatex.com/, reload required to take effect')
 			.addText(text => text
 				.setValue(this.plugin.settings.package_url.toString())
 				.onChange(async (value) => {
@@ -276,7 +277,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Enable caching of PDFs')
-			.setDesc("PDFs rendered by this pluing will be kept in `.obsidian/obsidian-swiftlatex-render-pdf-cache`. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
+			.setDesc("PDFs rendered by this plugin will be kept in `.obsidian/obsidian-swiftlatex-render-pdf-cache`. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableCache)
 				.onChange(async (value) => {
