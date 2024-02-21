@@ -3,12 +3,12 @@
 This plugin renders codeblocks with the label `latex` into a pdf and displays them inline in the note on preview. This is achieved using the SwiftLaTeX wasm LaTeX compiler built into the plugin, which has no other dependencies. Packages are fetched on-demand from https://texlive2.swiftlatex.com/, by default.
 
 # Setup
-Just place the files from the release into the folder `.obsidian/plugins/obsidian-swiftlatex-render`
+Just place the files from the release into the folder `.obsidian/plugins/obsidian-swiftlatex-render`, and make sure that the plugin is enabled in the 'Community plugins' tab of the settings.
 
 # Usage
 The content inside of `latex` code blocks will be rendered using the given command. You can load any packages you need with `\usepackage{}`.
 
-The generated svg's `<div>` parent has the class `block-language-latex`, so it can be styled using CSS snippets. For example, if you are using dark mode you can set `filter: invert(100%)` to invert the colours for a quick hack for dark themed diagrams. You could also set `background-color: white`.
+The generated pdf's `<div>` parent has the class `block-language-latex`, so it can be styled using CSS snippets. For example, if you are using dark mode you can set `filter: invert(100%)` to invert the colours for a quick hack for dark themed diagrams.
 
 # Limitations
 - Currently, all the code required to render the document must be contained within the `latex` code block.
@@ -25,7 +25,8 @@ Thanks to `fenjalien` who created https://github.com/fenjalien/obsidian-latex-re
 
 # TODO
 - Cache package files, removing the need to redownload after obsidian has been closed
+- Support for mobile? At least viewing cached pdfs
 - Support for images
 - Support for bibliographies
 - Support for `\input`
-- Support for mobile?
+

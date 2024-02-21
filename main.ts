@@ -31,7 +31,7 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		if (this.settings.enableCache) await this.loadCache();
-		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins\\obsidian-swiftlatex-render\\");
+		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins/obsidian-swiftlatex-render/");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
 		console.log(path.join(this.pluginFolderPath, "swiftlatexpdftex.js"));
@@ -72,7 +72,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadCache() {
-		this.cacheFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-pdf-cache\\");
+		this.cacheFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-pdf-cache/");
 		if (!fs.existsSync(this.cacheFolderPath)) {
 			fs.mkdirSync(this.cacheFolderPath);
 			this.cache = new Map();
@@ -102,7 +102,7 @@ export default class MyPlugin extends Plugin {
 		const ratio = width / height;
 		const pdfblob = new Blob([pdfData], { type: 'application/pdf' });
 		const objectURL = URL.createObjectURL(pdfblob);
-		return `<object data="${objectURL}#view=Fit&toolbar=0" type="application/pdf" class="block-lanuage-latex" style="width:100%; aspect-ratio:${ratio}"}></object>`;
+		return `<object data="${objectURL}#view=FitH&toolbar=0" type="application/pdf" class="block-lanuage-latex" style="width:100%; aspect-ratio:${ratio}"}></object>`;
 	}
 
 	async getPdfDimensions(pdf: any): Promise<{width: number, height: number}> {
