@@ -3,7 +3,7 @@
 	"name": "SwiftLaTeX Renderer",
 	"version": "0.1.0",
 	"minAppVersion": "1",
-	"description": "",
+	"description": "Render LaTeX inline using a SwiftLaTeX, a WebAssembly LaTeX compiler.",
 	"author": "gboyd068",
 	"isDesktopOnly": true
 }

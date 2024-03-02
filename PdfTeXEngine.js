@@ -14,7 +14,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
-var exports = {};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -30,7 +29,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
             if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
             if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
@@ -51,7 +50,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.PdfTeXEngine = exports.CompileResult = exports.EngineStatus = void 0;
 var EngineStatus;
 (function (EngineStatus) {
@@ -59,8 +58,10 @@ var EngineStatus;
     EngineStatus[EngineStatus["Ready"] = 2] = "Ready";
     EngineStatus[EngineStatus["Busy"] = 3] = "Busy";
     EngineStatus[EngineStatus["Error"] = 4] = "Error";
-})(EngineStatus = exports.EngineStatus || (exports.EngineStatus = {}));
-import Worker from "./swiftlatexpdftex.worker.js";
+})(EngineStatus || (exports.EngineStatus = EngineStatus = {}));
+var fs = require("fs");
+var path = require("path");
+var swiftlatexpdftex_worker_js_1 = require("./swiftlatexpdftex.worker.js");
 var CompileResult = /** @class */ (function () {
     function CompileResult() {
         this.pdf = undefined;
@@ -86,7 +87,7 @@ var PdfTeXEngine = /** @class */ (function () {
                         }
                         this.latexWorkerStatus = EngineStatus.Init;
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.latexWorker = Worker();
+                                _this.latexWorker = (0, swiftlatexpdftex_worker_js_1.default)();
                                 _this.latexWorker.onmessage = function (ev) {
                                     var data = ev['data'];
                                     var cmd = data['result'];
@@ -166,35 +167,107 @@ var PdfTeXEngine = /** @class */ (function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
+                this.checkEngineStatus();
+                this.latexWorkerStatus = EngineStatus.Busy;
+                new Promise(function (resolve, reject) {
+                    _this.latexWorker.onmessage = function (ev) {
+                        var data = ev['data'];
+                        var cmd = data['cmd'];
+                        if (cmd !== "compile")
+                            return;
+                        var result = data['result'];
+                        var log = data['log'];
+                        // const status: number = data['status'] as number;
+                        _this.latexWorkerStatus = EngineStatus.Ready;
+                        if (result === 'ok') {
+                            var formatArray = data['pdf']; /* PDF for result */
+                            var formatBlob = new Blob([formatArray], { type: 'application/octet-stream' });
+                            var formatURL_1 = URL.createObjectURL(formatBlob);
+                            setTimeout(function () { URL.revokeObjectURL(formatURL_1); }, 30000);
+                            console.log('Download format file via ' + formatURL_1);
+                            resolve();
+                        }
+                        else {
+                            reject(log);
+                        }
+                    };
+                    _this.latexWorker.postMessage({ 'cmd': 'compileformat' });
+                });
+                this.latexWorker.onmessage = function (_) {
+                };
+                return [2 /*return*/];
+            });
+        });
+    };
+    PdfTeXEngine.prototype.fetchCacheData = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var res;
+            var _this = this;
+            return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0:
-                        this.checkEngineStatus();
-                        this.latexWorkerStatus = EngineStatus.Busy;
-                        return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.latexWorker.onmessage = function (ev) {
-                                    var data = ev['data'];
-                                    var cmd = data['cmd'];
-                                    if (cmd !== "compile")
-                                        return;
-                                    var result = data['result'];
-                                    var log = data['log'];
-                                    // const status: number = data['status'] as number;
-                                    _this.latexWorkerStatus = EngineStatus.Ready;
-                                    if (result === 'ok') {
-                                        var formatArray = data['pdf']; /* PDF for result */
-                                        var formatBlob = new Blob([formatArray], { type: 'application/octet-stream' });
-                                        var formatURL_1 = URL.createObjectURL(formatBlob);
-                                        setTimeout(function () { URL.revokeObjectURL(formatURL_1); }, 30000);
-                                        console.log('Download format file via ' + formatURL_1);
-                                        resolve();
-                                    }
-                                    else {
-                                        reject(log);
-                                    }
-                                };
-                                _this.latexWorker.postMessage({ 'cmd': 'compileformat' });
-                            })];
+                    case 0: return [4 /*yield*/, new Promise(function (resolve, reject) {
+                            _this.latexWorker.onmessage = function (ev) {
+                                var data = ev['data'];
+                                var cmd = data['cmd'];
+                                if (cmd !== 'fetchcache')
+                                    return;
+                                var result = data['result'];
+                                var texlive404_cache = data['texlive404_cache'];
+                                var texlive200_cache = data['texlive200_cache'];
+                                var pk404_cache = data['pk404_cache'];
+                                var pk200_cache = data['pk200_cache'];
+                                if (result === 'ok') {
+                                    resolve([texlive404_cache, texlive200_cache, pk404_cache, pk200_cache]);
+                                }
+                                else {
+                                    reject('failed to fetch cache data');
+                                }
+                            };
+                            _this.latexWorker.postMessage({ 'cmd': 'fetchcache' });
+                        })];
                     case 1:
+                        res = _a.sent();
+                        this.latexWorker.onmessage = function (_) {
+                        };
+                        return [2 /*return*/, res];
+                }
+            });
+        });
+    };
+    PdfTeXEngine.prototype.writeCacheData = function (texlive404_cache, texlive200_cache, pk404_cache, pk200_cache) {
+        this.checkEngineStatus();
+        if (this.latexWorker !== undefined) {
+            this.latexWorker.postMessage({ 'cmd': 'writecache', 'texlive404_cache': texlive404_cache, 'texlive200_cache': texlive200_cache, 'pk404_cache': pk404_cache, 'pk200_cache': pk200_cache });
+        }
+    };
+    PdfTeXEngine.prototype.fetchTexFile = function (filename, host_dir) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: 
+                    // get files from the memfs based on the cache data objects
+                    return [4 /*yield*/, new Promise(function (resolve, reject) {
+                            _this.latexWorker.onmessage = function (ev) {
+                                var data = ev['data'];
+                                var cmd = data['cmd'];
+                                if (cmd !== "fetchfile")
+                                    return;
+                                var result = data['result'];
+                                var fileContent = new Uint8Array(data['fileContent']);
+                                // write fetched file
+                                fs.writeFileSync(path.join(host_dir, filename), fileContent);
+                                if (result === 'ok') {
+                                    resolve();
+                                }
+                                else {
+                                    reject("failed to fetch tex file from memfs: ".concat(filename));
+                                }
+                            };
+                            _this.latexWorker.postMessage({ 'cmd': 'fetchtexfile', 'filename': filename });
+                        })];
+                    case 1:
+                        // get files from the memfs based on the cache data objects
                         _a.sent();
                         this.latexWorker.onmessage = function (_) {
                         };
@@ -202,6 +275,12 @@ var PdfTeXEngine = /** @class */ (function () {
                 }
             });
         });
+    };
+    PdfTeXEngine.prototype.writeTexFSFile = function (filename, srccode) {
+        this.checkEngineStatus();
+        if (this.latexWorker !== undefined) {
+            this.latexWorker.postMessage({ 'cmd': 'writetexfile', 'url': filename, 'src': srccode });
+        }
     };
     PdfTeXEngine.prototype.setEngineMainFile = function (filename) {
         this.checkEngineStatus();
@@ -244,4 +323,5 @@ var PdfTeXEngine = /** @class */ (function () {
     };
     return PdfTeXEngine;
 }());
-module.exports = {PdfTeXEngine};
+exports.PdfTeXEngine = PdfTeXEngine;
+module.exports = { PdfTeXEngine: PdfTeXEngine };

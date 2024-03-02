@@ -137,7 +137,10 @@ export default class MyPlugin extends Plugin {
 				}
 				).catch(err => { el.innerHTML = `<div class="block-latex-error">${err}</div>`; reject(err); });
 			}
-		}).then(() => { if (this.settings.enableCache) setTimeout(() => this.cleanUpCache(), 1000); });
+		}).then(() => { 
+			this.pdfEngine.flushCache();
+			if (this.settings.enableCache) setTimeout(() => this.cleanUpCache(), 1000);
+		});
 	}
 
 	renderLatexToPDF(source: string, md5Hash: string) {
@@ -154,10 +157,30 @@ export default class MyPlugin extends Plugin {
 					// manage latex errors
 					reject(r.log);
 				}
+				// update the list of package files in the cache
+
+				// then fetch and save any new package files
+
 				resolve(r);
 				});
 			})
 		});
+	}
+
+	fetchPackageCacheData() {
+		this.pdfEngine.fetchPackageCacheData().then((r: any) => {
+			var texlive404_cache = r[0];
+			var texlive200_cache = r[1];
+			var pk404_cache = r[2];
+			var pk200_cache = r[3];
+		});
+		// write to plugin data
+		
+	}
+
+	fetchPackageFilesDiff() {
+		// based on the old and new package files in package cache data,
+		// fetch and save the new package files
 	}
 
 	async saveCache() {
