@@ -27,10 +27,7 @@ You can host your own package server using the repo at https://github.com/SwiftL
 # Building from source
 1. follow the instructions in https://github.com/gboyd068/SwiftLaTeX to use Emscripten to build `swiftlatexpdftex.worker.js` within the `pdftex.wasm` directory (currently only PdfTeX is supported)
 2. Within that repo, run `tsc PdfTeXEngine.tsx` to build `PdfTeXEngine.js` from the Typescript source
-3. Clone this repository 
-```
-git clone https://github.com/gboyd068/obsidian-swiftlatex-render
-```
+3. Clone this repository `git clone https://github.com/gboyd068/obsidian-swiftlatex-render`
 and copy the two output files mentioned above into the `obsidian-swiftlatex-render` directory
 4. Install the necessary node packages with `npm i`
 5. Build `main.js` with `npm run build`
