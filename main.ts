@@ -87,11 +87,6 @@ export default class MyPlugin extends Plugin {
 			fs.mkdirSync(this.packageCacheFolderPath);
 		}
 		console.log("SwiftLaTeX: Loading package cache");
-		// write cache data to the VFS
-		this.pdfEngine.writeCacheData(this.settings.packageCache[0],
-									this.settings.packageCache[1],
-									this.settings.packageCache[2],
-									this.settings.packageCache[3]);
 
 		// write the tex packages to the cache in the VFS
 		for (const [key, val] of Object.entries(this.settings.packageCache[1])) {
@@ -106,6 +101,12 @@ export default class MyPlugin extends Plugin {
 				delete this.settings.packageCache[1][key];
 			}
 		}
+
+		// write cache data to the VFS
+		this.pdfEngine.writeCacheData(this.settings.packageCache[0],
+			this.settings.packageCache[1],
+			this.settings.packageCache[2],
+			this.settings.packageCache[3]);
 	}
 
 	unloadCache() {
