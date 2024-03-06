@@ -240,37 +240,42 @@ var PdfTeXEngine = /** @class */ (function () {
             this.latexWorker.postMessage({ 'cmd': 'writecache', 'texlive404_cache': texlive404_cache, 'texlive200_cache': texlive200_cache, 'pk404_cache': pk404_cache, 'pk200_cache': pk200_cache });
         }
     };
-    PdfTeXEngine.prototype.fetchTexFile = function (filename, host_dir) {
+    PdfTeXEngine.prototype.fetchTexFiles = function (filenames, host_dir) {
         return __awaiter(this, void 0, void 0, function () {
+            var resolves, promises;
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: 
-                    // get files from the memfs based on the cache data objects
-                    return [4 /*yield*/, new Promise(function (resolve, reject) {
-                            _this.latexWorker.onmessage = function (ev) {
-                                var data = ev['data'];
-                                var cmd = data['cmd'];
-                                if (cmd !== "fetchfile")
-                                    return;
-                                var result = data['result'];
-                                var fileContent = new Uint8Array(data['fileContent']);
-                                // write fetched file
-                                fs.writeFileSync(path.join(host_dir, filename), fileContent);
-                                if (result === 'ok') {
-                                    resolve();
-                                }
-                                else {
-                                    reject("failed to fetch tex file from memfs: ".concat(filename));
-                                }
-                            };
-                            _this.latexWorker.postMessage({ 'cmd': 'fetchtexfile', 'filename': filename });
-                        })];
-                    case 1:
-                        // get files from the memfs based on the cache data objects
-                        _a.sent();
-                        this.latexWorker.onmessage = function (_) {
+                    case 0:
+                        resolves = new Map();
+                        this.latexWorker.onmessage = function (ev) {
+                            var data = ev['data'];
+                            var cmd = data['cmd'];
+                            if (cmd !== "fetchfile")
+                                return;
+                            var result = data['result'];
+                            var fileContent = new Uint8Array(data['content']);
+                            var fname = data['filename'];
+                            // write fetched file
+                            fs.writeFileSync(path.join(host_dir, fname), fileContent);
+                            if (result === 'ok') {
+                                // Resolve the Promise for this file
+                                resolves.get(fname)();
+                            }
+                            else {
+                                console.log("Failed to fetch ".concat(fname, " from memfs"));
+                            }
                         };
+                        promises = filenames.map(function (filename) { return new Promise(function (resolve) {
+                            resolves.set(filename, resolve);
+                            _this.latexWorker.postMessage({ 'cmd': 'fetchfile', 'filename': filename });
+                        }); });
+                        // Wait for all Promises to resolve
+                        return [4 /*yield*/, Promise.all(promises)];
+                    case 1:
+                        // Wait for all Promises to resolve
+                        _a.sent();
+                        this.latexWorker.onmessage = function (_) { };
                         return [2 /*return*/];
                 }
             });

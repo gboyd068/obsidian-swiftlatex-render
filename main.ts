@@ -11,6 +11,7 @@ interface MyPluginSettings {
 	timeout: number,
 	enableCache: boolean,
 	cache: Array<[string, Set<string>]>;
+	packageCache: Array<StringMap>;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
@@ -18,11 +19,15 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	timeout: 10000,
 	enableCache: true,
 	cache: [],
+	packageCache: [{},{},{},{}]
 }
+
+type StringMap = { [key: string]: string };
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	cacheFolderPath: string;
+	packageCacheFolderPath: string;
 	pluginFolderPath: string;
 	pdfEngine: any;
 
@@ -33,27 +38,9 @@ export default class MyPlugin extends Plugin {
 		if (this.settings.enableCache) await this.loadCache();
 		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins/obsidian-swiftlatex-render/");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		console.log(path.join(this.pluginFolderPath, "swiftlatexpdftex.js"));
-		// console.log(process.cwd());
-		// const sourcePath = path.join(this.pluginFolderPath, "swiftlatexpdftex.js");
-
-		// if (!fs.existsSync(sourcePath)) {
-		// 	console.error(`Source file does not exist: ${sourcePath}`);
-		// } else if (!fs.existsSync(this.pluginFolderPath)) {
-		// 	console.error(`Plugin folder does not exist: ${this.pluginFolderPath}`);
-		// } else {
-		// 	try {
-		// 		fs.copyFileSync(sourcePath, "app://obsidian.md/swiftlatexpdftex.js");
-		// 	} catch (err) {
-		// 		console.error(`Error copying file: ${err}`);
-		// 	}
-		// }
-
-		// console.log(__dirname);
-
 		this.pdfEngine = new PdfTeXEngine();
 		await this.pdfEngine.loadEngine();
+		await this.loadPackageCache();
 		this.pdfEngine.setTexliveEndpoint(this.settings.package_url);
 		this.registerMarkdownCodeBlockProcessor("latex", (source, el, ctx) => this.renderLatexToElement(source, el, ctx));
 	}
@@ -72,7 +59,11 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadCache() {
-		this.cacheFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-pdf-cache/");
+		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-cache");
+		if (!fs.existsSync(cacheFolderParentPath)) {
+			fs.mkdirSync(cacheFolderParentPath);
+		}
+		this.cacheFolderPath = path.join(cacheFolderParentPath, "pdf-cache");
 		if (!fs.existsSync(this.cacheFolderPath)) {
 			fs.mkdirSync(this.cacheFolderPath);
 			this.cache = new Map();
@@ -81,6 +72,38 @@ export default class MyPlugin extends Plugin {
 			// For some reason `this.cache` at this point is actually `Map<string, Array<string>>`
 			for (const [k, v] of this.cache) {
 				this.cache.set(k, new Set(v))
+			}
+		}
+	}
+
+
+	async loadPackageCache() {
+		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-cache");
+		if (!fs.existsSync(cacheFolderParentPath)) {
+			fs.mkdirSync(cacheFolderParentPath);
+		}
+		this.packageCacheFolderPath = path.join(cacheFolderParentPath, "package-cache");
+		if (!fs.existsSync(this.packageCacheFolderPath)) {
+			fs.mkdirSync(this.packageCacheFolderPath);
+		}
+		console.log("SwiftLaTeX: Loading package cache");
+		// write cache data to the VFS
+		this.pdfEngine.writeCacheData(this.settings.packageCache[0],
+									this.settings.packageCache[1],
+									this.settings.packageCache[2],
+									this.settings.packageCache[3]);
+
+		// write the tex packages to the cache in the VFS
+		for (const [key, val] of Object.entries(this.settings.packageCache[1])) {
+			const filename = path.basename(val);
+			let read_success = false;
+			try {
+				const srccode = fs.readFileSync(path.join(this.packageCacheFolderPath, filename));
+				this.pdfEngine.writeTexFSFile(filename, srccode);
+			} catch (e) {
+				// when unable to read file, remove this from the cache
+				console.log(`Unable to read file ${filename} from package cache`)
+				delete this.settings.packageCache[1][key];
 			}
 		}
 	}
@@ -149,7 +172,6 @@ export default class MyPlugin extends Plugin {
 
 			temp.mkdir("obsidian-swiftlatex-renderer", (err, dirPath) => {
 				if (err) reject(err);
-				fs.writeFileSync(path.join(dirPath, md5Hash + ".tex"), source);
 				this.pdfEngine.writeMemFSFile("main.tex", source);
 				this.pdfEngine.setEngineMainFile("main.tex");
 				this.pdfEngine.compileLaTeX().then((r: any) => {
@@ -158,29 +180,38 @@ export default class MyPlugin extends Plugin {
 					reject(r.log);
 				}
 				// update the list of package files in the cache
-
-				// then fetch and save any new package files
-
+				this.fetchPackageCacheData()
 				resolve(r);
 				});
 			})
 		});
 	}
 
-	fetchPackageCacheData() {
-		this.pdfEngine.fetchPackageCacheData().then((r: any) => {
-			var texlive404_cache = r[0];
-			var texlive200_cache = r[1];
-			var pk404_cache = r[2];
-			var pk200_cache = r[3];
+	fetchPackageCacheData(): void {
+		this.pdfEngine.fetchCacheData().then((r: StringMap[]) => {
+			// let texlive404_cache = r[0];
+			// let texlive200_cache = r[1];
+			// let pk404_cache = r[2];
+			// let pk200_cache = r[3];
+			for (var i = 0; i < r.length; i++) {
+				if (i === 1) { // currently only dealing with texlive200_cache
+					// get diffs
+					const newFileNames = this.getNewPackageFileNames(this.settings.packageCache[i], r[i]);
+					// fetch new package files
+					this.pdfEngine.fetchTexFiles(newFileNames, this.packageCacheFolderPath);
+				}
+			}
+			this.settings.packageCache = r;
+			this.saveSettings().then(); // hmm
 		});
-		// write to plugin data
-		
 	}
 
-	fetchPackageFilesDiff() {
+	getNewPackageFileNames(oldCacheData: StringMap, newCacheData: StringMap): string[] {
 		// based on the old and new package files in package cache data,
-		// fetch and save the new package files
+		// return the new package files
+		let newKeys = Object.keys(newCacheData).filter(key => !(key in oldCacheData));
+		let newPackageFiles = newKeys.map(key => path.basename(newCacheData[key]));		
+		return newPackageFiles;
 	}
 
 	async saveCache() {
