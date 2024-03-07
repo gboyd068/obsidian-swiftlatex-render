@@ -36,7 +36,7 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		if (this.settings.enableCache) await this.loadCache();
-		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins/obsidian-swiftlatex-render/");
+		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins/swiftlatex-render/");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 		this.pdfEngine = new PdfTeXEngine();
 		await this.pdfEngine.loadEngine();
@@ -59,7 +59,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadCache() {
-		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-cache");
+		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "swiftlatex-render-cache");
 		if (!fs.existsSync(cacheFolderParentPath)) {
 			fs.mkdirSync(cacheFolderParentPath);
 		}
@@ -78,7 +78,7 @@ export default class MyPlugin extends Plugin {
 
 
 	async loadPackageCache() {
-		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "obsidian-swiftlatex-render-cache");
+		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "swiftlatex-render-cache");
 		if (!fs.existsSync(cacheFolderParentPath)) {
 			fs.mkdirSync(cacheFolderParentPath);
 		}
@@ -332,7 +332,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Enable caching of PDFs')
-			.setDesc("PDFs rendered by this plugin will be kept in `.obsidian/obsidian-swiftlatex-render-pdf-cache`. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
+			.setDesc("PDFs rendered by this plugin will be kept in `.obsidian/swiftlatex-render-cache/pdf-cache`. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableCache)
 				.onChange(async (value) => {

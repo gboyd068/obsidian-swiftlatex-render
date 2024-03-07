@@ -3,7 +3,7 @@
 This plugin renders codeblocks with the label `latex` into a pdf and displays them inline in the note on preview. This is achieved using the SwiftLaTeX wasm LaTeX compiler built into the plugin, which has no other dependencies. Packages are fetched on-demand from https://texlive2.swiftlatex.com/, by default.
 
 # Setup
-Just place the files from the release into the folder `.obsidian/plugins/obsidian-swiftlatex-render`, and make sure that the plugin is enabled in the 'Community plugins' tab of the settings.
+Just place the files from the release into the folder `.obsidian/plugins/swiftlatex-render`, and make sure that the plugin is enabled in the 'Community plugins' tab of the settings.
 
 # Usage
 The content inside of `latex` code blocks will be rendered using the given command. You can load any packages you need with `\usepackage{}`.
@@ -16,10 +16,10 @@ The generated pdf's `<div>` parent has the class `block-language-latex`, so it c
 # Caching
 
 ### pdfs
-By default the plugin will keep generated `.pdf` files in `.obsidian/obsidian-latex-render-cache/pdf-cache` so it won't have to re-render if nothing in the code block has changed, or you copy the code block to a different file, the plugin will simply reuse the `.pdf` file. It'll keep track of which files use each `.pdf` and when no files use a `.pdf` the plugin removes it from the cache.
+By default the plugin will keep generated `.pdf` files in `.obsidian/swiftlatex-render-cache/pdf-cache` so it won't have to re-render if nothing in the code block has changed, or you copy the code block to a different file, the plugin will simply reuse the `.pdf` file. It'll keep track of which files use each `.pdf` and when no files use a `.pdf` the plugin removes it from the cache.
 
 ### Packages
-The plugin also caches used packages in `.obsidian/obsidian-latex-render-cache/package-cache`, loading the packages back into the virtual file system used by the WebAssembly on startup
+The plugin also caches used packages in `.obsidian/swiftlatex-render-cache/package-cache`, loading the packages back into the virtual file system used by the WebAssembly on startup
 
 # Self-Hosting Packages
 You can host your own package server using the repo at https://github.com/SwiftLaTeX/Texlive-Ondemand , which might be required if using very recent packages as the default url uses a slightly outdated version of TeX Live
