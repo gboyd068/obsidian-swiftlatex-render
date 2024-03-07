@@ -1,6 +1,6 @@
 {
-	"id": "obsidian-swiftlatex-render",
-	"name": "SwiftLaTeX Renderer",
+	"id": "swiftlatex-render",
+	"name": "SwiftLaTeX Render",
 	"version": "0.2.0",
 	"minAppVersion": "1",
 	"description": "Render LaTeX inline using a SwiftLaTeX, a WebAssembly LaTeX compiler.",

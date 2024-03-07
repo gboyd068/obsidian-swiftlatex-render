@@ -102,8 +102,8 @@ export default class MyPlugin extends Plugin {
 			}
 		}
 
-		// write cache data to the VFS
-		this.pdfEngine.writeCacheData(this.settings.packageCache[0],
+		// write cache data to the VFS, except don't write the texlive404_cache because this will cause problems when switching between texlive sources
+		this.pdfEngine.writeCacheData({},
 			this.settings.packageCache[1],
 			this.settings.packageCache[2],
 			this.settings.packageCache[3]);
