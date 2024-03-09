@@ -6,7 +6,7 @@ import * as path from 'path';
 import {PdfTeXEngine} from './PdfTeXEngine.js';
 import {PDFDocument} from 'pdf-lib';
 
-interface MyPluginSettings {
+interface SwiftlatexRenderSettings {
 	package_url: string,
 	timeout: number,
 	enableCache: boolean,
@@ -14,7 +14,7 @@ interface MyPluginSettings {
 	packageCache: Array<StringMap>;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
 	package_url: `https://texlive2.swiftlatex.com/`,
 	timeout: 10000,
 	enableCache: true,
@@ -24,8 +24,8 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 
 type StringMap = { [key: string]: string };
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class SwiftlatexRenderPlugin extends Plugin {
+	settings: SwiftlatexRenderSettings;
 	cacheFolderPath: string;
 	packageCacheFolderPath: string;
 	pluginFolderPath: string;
@@ -36,7 +36,7 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		if (this.settings.enableCache) await this.loadCache();
-		this.pluginFolderPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "plugins/swiftlatex-render/");
+		this.pluginFolderPath = path.join(this.getVaultPath(), this.app.vault.configDir, "plugins/swiftlatex-render/");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 		this.pdfEngine = new PdfTeXEngine();
 		await this.pdfEngine.loadEngine();
@@ -58,8 +58,16 @@ export default class MyPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	getVaultPath() {
+		if (this.app.vault.adapter instanceof FileSystemAdapter) {
+			return this.app.vault.adapter.getBasePath();
+		} else {
+			throw new Error("SwiftLaTeX: Could not get vault path.");
+		}
+	}
+
 	async loadCache() {
-		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "swiftlatex-render-cache");
+		const cacheFolderParentPath = path.join(this.getVaultPath(), this.app.vault.configDir, "swiftlatex-render-cache");
 		if (!fs.existsSync(cacheFolderParentPath)) {
 			fs.mkdirSync(cacheFolderParentPath);
 		}
@@ -78,7 +86,7 @@ export default class MyPlugin extends Plugin {
 
 
 	async loadPackageCache() {
-		const cacheFolderParentPath = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.app.vault.configDir, "swiftlatex-render-cache");
+		const cacheFolderParentPath = path.join(this.getVaultPath(), this.app.vault.configDir, "swiftlatex-render-cache");
 		if (!fs.existsSync(cacheFolderParentPath)) {
 			fs.mkdirSync(cacheFolderParentPath);
 		}
@@ -126,7 +134,15 @@ export default class MyPlugin extends Plugin {
 		const ratio = width / height;
 		const pdfblob = new Blob([pdfData], { type: 'application/pdf' });
 		const objectURL = URL.createObjectURL(pdfblob);
-		return `<object data="${objectURL}#view=FitH&toolbar=0" type="application/pdf" class="block-lanuage-latex" style="width:100%; aspect-ratio:${ratio}"}></object>`;
+		// return `<object data="${objectURL}#view=FitH&toolbar=0" type="application/pdf" class="block-lanuage-latex" style="width:100%; aspect-ratio:${ratio}"}></object>`;
+		return  {
+			attr: {
+			  data: `${objectURL}#view=FitH&toolbar=0`,
+			  type: 'application/pdf',
+			  class: 'block-lanuage-latex',
+			  style: `width:100%; aspect-ratio:${ratio}`
+			}
+		};
 	}
 
 	async getPdfDimensions(pdf: any): Promise<{width: number, height: number}> {
@@ -146,7 +162,7 @@ export default class MyPlugin extends Plugin {
 			if (this.settings.enableCache && this.cache.has(md5Hash) && fs.existsSync(pdfPath)) {
 				console.log("Using cached PDF: ", md5Hash);
 				let pdfData = fs.readFileSync(pdfPath);
-				this.pdfToHtml(pdfData).then((html)=>{el.innerHTML = html; resolve();});
+				this.pdfToHtml(pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
 				this.addFileToCache(md5Hash, ctx.sourcePath);
 				resolve();
 			}
@@ -155,11 +171,14 @@ export default class MyPlugin extends Plugin {
 
 				this.renderLatexToPDF(source, md5Hash).then((r: any) => {
 					if (this.settings.enableCache) this.addFileToCache(md5Hash, ctx.sourcePath);
-				this.pdfToHtml(r.pdf).then((html)=>{el.innerHTML = html; resolve();});
+				this.pdfToHtml(r.pdf).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
 				fs.writeFileSync(pdfPath, r.pdf);
 				resolve();
 				}
-				).catch(err => { el.innerHTML = `<div class="block-latex-error">${err}</div>`; reject(err); });
+				).catch(err => { 
+					let errorDiv = el.createEl('div', { text: `${err}`, attr: { class: 'block-latex-error' } });
+					reject(err); 
+				});				
 			}
 		}).then(() => { 
 			this.pdfEngine.flushCache();
@@ -245,7 +264,9 @@ export default class MyPlugin extends Plugin {
 			if (file == null) {
 				this.removeFileFromCache(file_path);
 			} else {
-				await this.removeUnusedCachesForFile(file as TFile);
+				if (file instanceof TFile) {
+					await this.removeUnusedCachesForFile(file);
+				}
 			}
 		}
 		await this.saveCache();
@@ -306,9 +327,9 @@ export default class MyPlugin extends Plugin {
 }
 
 class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: SwiftlatexRenderPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: SwiftlatexRenderPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -332,7 +353,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Enable caching of PDFs')
-			.setDesc("PDFs rendered by this plugin will be kept in `.obsidian/swiftlatex-render-cache/pdf-cache`. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
+			.setDesc("PDFs rendered by this plugin will be kept in `{config directory}/swiftlatex-render-cache/pdf-cache`, where the config directory is `.obsidian` by default. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableCache)
 				.onChange(async (value) => {
