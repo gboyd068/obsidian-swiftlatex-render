@@ -134,7 +134,6 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		const ratio = width / height;
 		const pdfblob = new Blob([pdfData], { type: 'application/pdf' });
 		const objectURL = URL.createObjectURL(pdfblob);
-		// return `<object data="${objectURL}#view=FitH&toolbar=0" type="application/pdf" class="block-lanuage-latex" style="width:100%; aspect-ratio:${ratio}"}></object>`;
 		return  {
 			attr: {
 			  data: `${objectURL}#view=FitH&toolbar=0`,
@@ -160,14 +159,14 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			// PDF file has already been cached
 			// Could have a case where pdfCache has the key but the cached file has been deleted
 			if (this.settings.enableCache && this.cache.has(md5Hash) && fs.existsSync(pdfPath)) {
-				console.log("Using cached PDF: ", md5Hash);
+				// console.log("Using cached PDF: ", md5Hash);
 				let pdfData = fs.readFileSync(pdfPath);
 				this.pdfToHtml(pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
 				this.addFileToCache(md5Hash, ctx.sourcePath);
 				resolve();
 			}
 			else {
-				console.log("Rendering PDF: ", md5Hash);
+				// console.log("Rendering PDF: ", md5Hash);
 
 				this.renderLatexToPDF(source, md5Hash).then((r: any) => {
 					if (this.settings.enableCache) this.addFileToCache(md5Hash, ctx.sourcePath);
@@ -209,10 +208,6 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 
 	fetchPackageCacheData(): void {
 		this.pdfEngine.fetchCacheData().then((r: StringMap[]) => {
-			// let texlive404_cache = r[0];
-			// let texlive200_cache = r[1];
-			// let pk404_cache = r[2];
-			// let pk200_cache = r[3];
 			for (var i = 0; i < r.length; i++) {
 				if (i === 1) { // currently only dealing with texlive200_cache
 					// get diffs
@@ -339,8 +334,6 @@ class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'SwiftLaTeX Render Settings' });
-
 		new Setting(containerEl)
 			.setName('Package Fetching URL')
 			.setDesc('default: https://texlive2.swiftlatex.com/, reload required to take effect')
@@ -353,7 +346,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Enable caching of PDFs')
-			.setDesc("PDFs rendered by this plugin will be kept in `{config directory}/swiftlatex-render-cache/pdf-cache`, where the config directory is `.obsidian` by default. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
+			.setDesc("PDFs rendered by this plugin will be kept in {config directory}/swiftlatex-render-cache/pdf-cache, where the config directory is .obsidian by default. The plugin will automatically keep track of used pdfs and remove any that aren't being used")
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableCache)
 				.onChange(async (value) => {
