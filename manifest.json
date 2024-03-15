@@ -3,7 +3,7 @@
 	"name": "SwiftLaTeX Render",
 	"version": "0.2.0",
 	"minAppVersion": "1",
-	"description": "Render LaTeX inline using a SwiftLaTeX, a WebAssembly LaTeX compiler.",
+	"description": "Render LaTeX in codeblocks into a pdf, without needing to install LaTeX separately.",
 	"author": "gboyd068",
 	"isDesktopOnly": true
 }
