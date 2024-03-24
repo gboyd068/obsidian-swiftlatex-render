@@ -5,6 +5,7 @@ import * as temp from 'temp';
 import * as path from 'path';
 import {PdfTeXEngine} from './PdfTeXEngine.js';
 import {PDFDocument} from 'pdf-lib';
+const pdftocairo = require('./pdftocairo');
 
 interface SwiftlatexRenderSettings {
 	package_url: string,
@@ -38,11 +39,15 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		if (this.settings.enableCache) await this.loadCache();
 		this.pluginFolderPath = path.join(this.getVaultPath(), this.app.vault.configDir, "plugins/swiftlatex-render/");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
+		// initialize the latex compiler
 		this.pdfEngine = new PdfTeXEngine();
 		await this.pdfEngine.loadEngine();
 		await this.loadPackageCache();
 		this.pdfEngine.setTexliveEndpoint(this.settings.package_url);
-		this.registerMarkdownCodeBlockProcessor("latex", (source, el, ctx) => this.renderLatexToElement(source, el, ctx));
+
+		this.addSyntaxHighlighting();
+		this.registerMarkdownCodeBlockProcessor("latex", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, false));
+		this.registerMarkdownCodeBlockProcessor("latexsvg", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, true));
 	}
 
 	onunload() {
@@ -121,6 +126,11 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		fs.rmdirSync(this.cacheFolderPath, { recursive: true });
 	}
 
+	addSyntaxHighlighting() {
+		// @ts-ignore
+		window.CodeMirror.modeInfo.push({name: "latexsvg", mime: "text/x-latex", mode: "stex"});
+	}
+
 	formatLatexSource(source: string) {
 		return source;
 	}
@@ -144,6 +154,21 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		};
 	}
 
+	async svgToHtml(svgData: any, pdfData:any) {
+		const svgblob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8'});
+		const {width, height} = await this.getPdfDimensions(pdfData);
+		const ratio = width / height;
+		const objectURL = URL.createObjectURL(svgblob);
+		return  {
+			attr: {
+			  data: objectURL,
+			  type: 'image/svg+xml',
+			  class: 'block-lanuage-latexsvg',
+			  style: `aspect-ratio:${ratio}`
+			}
+		};
+	}
+
 	async getPdfDimensions(pdf: any): Promise<{width: number, height: number}> {
 		const pdfDoc = await PDFDocument.load(pdf);
 		const firstPage = pdfDoc.getPages()[0];
@@ -151,7 +176,17 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		return {width, height};
 	}
 
-	async renderLatexToElement(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+	pdfToSVG(pdfData: any) {
+		pdftocairo.FS.writeFile('input.pdf', pdfData);
+		pdftocairo._convertPdfToSvg();
+		const svg = pdftocairo.FS.readFile('input.svg');
+		// clean up
+		pdftocairo.FS.unlink('input.pdf');
+		pdftocairo.FS.unlink('input.svg');
+		return svg;
+	}
+
+	async renderLatexToElement(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext, outputSVG: boolean = false) {
 		return new Promise<void>((resolve, reject) => {
 			let md5Hash = this.hashLatexSource(source);
 			let pdfPath = path.join(this.cacheFolderPath, `${md5Hash}.pdf`);
@@ -161,7 +196,12 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			if (this.settings.enableCache && this.cache.has(md5Hash) && fs.existsSync(pdfPath)) {
 				// console.log("Using cached PDF: ", md5Hash);
 				let pdfData = fs.readFileSync(pdfPath);
-				this.pdfToHtml(pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+				if (outputSVG) {
+					const svg = this.pdfToSVG(pdfData);
+					this.svgToHtml(svg, pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+				} else {
+					this.pdfToHtml(pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+				}
 				this.addFileToCache(md5Hash, ctx.sourcePath);
 				resolve();
 			}
@@ -170,9 +210,14 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 
 				this.renderLatexToPDF(source, md5Hash).then((r: any) => {
 					if (this.settings.enableCache) this.addFileToCache(md5Hash, ctx.sourcePath);
-				this.pdfToHtml(r.pdf).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
-				fs.writeFileSync(pdfPath, r.pdf);
-				resolve();
+					if (outputSVG) {
+						const svg = this.pdfToSVG(r.pdf);
+						this.svgToHtml(svg, r.pdf).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+					} else {
+						this.pdfToHtml(r.pdf).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+					}
+					fs.writeFileSync(pdfPath, r.pdf);
+					resolve();
 				}
 				).catch(err => { 
 					let errorDiv = el.createEl('div', { text: `${err}`, attr: { class: 'block-latex-error' } });
