@@ -104,7 +104,18 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		}
 		console.log("SwiftLaTeX: Loading package cache");
 
-		// write the tex packages to the cache in the VFS
+		// add files in the package cache folder to the cache list
+		const packageFiles = fs.readdirSync(this.packageCacheFolderPath);
+		for (const file of packageFiles) {
+			const filename = path.basename(file);
+			const value = "/tex/"+filename;
+			const packageValues = Object.values(this.settings.packageCache[1]);
+			if (!packageValues.includes(value)) {
+				const key = "26/" + filename
+				this.settings.packageCache[1][key] = value;
+			}
+		}
+		// move packages to the VFS
 		for (const [key, val] of Object.entries(this.settings.packageCache[1])) {
 			const filename = path.basename(val);
 			let read_success = false;

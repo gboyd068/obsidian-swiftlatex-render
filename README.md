@@ -12,7 +12,10 @@ The content inside of the supported code blocks will be rendered using the given
 The generated pdf's `<div>` parent has the class `block-language-latex`, so it can be styled using CSS snippets. For example, if you are using dark mode you can set `filter: invert(100%)` to invert the colours for a quick hack for dark themed diagrams.
 The generated svg's parent has the class `block-lanuage-latexsvg`.
 
-Examples:
+## Examples:
+
+<details>
+
 <img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/scrollable_sample.png?raw=true" width="60%" display="block" margin="auto">
 
 <details>
@@ -215,6 +218,7 @@ lindenmayer system -- cycle;
 ```
 </details>
 
+<details>
 
 # Limitations
 - All the code required to render the document must be contained within the code block, meaning that any images, \includes etc will not work
@@ -242,19 +246,28 @@ and copy the two output files mentioned above into the `obsidian-swiftlatex-rend
 
 **Q: How can I solve package.sty is not found?**
 
-**A:** ADD EXPLANATION
+**A:** If you are getting package not found errors, it is possible that the package you want is not available at https://texlive2.swiftlatex.com/ .
+If this happens, you can download the `package.sty` file and place it in the package cache directory, which is `.obsidian/swiftlatex-render-cache/package-cache` by default.
+After restarting obsidian, this package will be available to the compiler.
 
 **Q: Why do pdfs created with the `latex` codeblock not appear when I export to pdf?**
 
-**A:** ADD EXPLANATION
+**A:** The embedded pdfs created with a `latex` codeblock are interactive (you can scroll and zoom etc), so there is no simple way to statically export them into another pdf. Instead use a `latexsvg` codeblock to produce the first page of the document as svg, this will then appear in the exported pdf.
 
 **Q: How can I resize the svg output?**
 
-**A:** ADD EXPLANATION
+**A:** The plugin automatically resizes the view of the svg to fit into the correct width for the note, so uniformly resizing a diagram in `\documentclass{standalone}` will not work.
+However, this can be solved within the latex code by adding horizontal spacing around the diagram (see the molecular diagram example above).
 
-**Q: Why do some svgs not appear correctly in reading mode on when exported to pdf?**
+**Q: I have just pasted some valid latex into obsidian, why isn't it working?**
 
-**A:** ADD EXPLANATION
+**A:** Extra newlines are sometimes added when you paste into obsidian, causing the latex compilation to fail. Pasting as plaintext (right click and select paste as plain text) has solved this problem in all the examples tested so far.
+
+**Q: Why do some svgs not appear correctly in reading mode or when exported to pdf?**
+
+**A:** I don't actually know the answer to this unfortunately, but the same thing happens with diagrams produced by the obsidian-tikzjax plugin, and this plugin uses a different utility to generate svgs than the tikzjax plugin, so it seems like it might be a bug in the obsidian export to pdf process. Maybe try alternative export tools and see if they work.
+
+
 
 
 # Acknowledgements
