@@ -13,10 +13,11 @@ The generated pdf's `<div>` parent has the class `block-language-latex`, so it c
 The generated svg's parent has the class `block-lanuage-latexsvg`.
 
 Examples:
-<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/scrollable_sample.png?raw=true" width="48">
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/scrollable_sample.png?raw=true" width="60%">
 
 <details>
 <summary>Codeblock</summary>
+
 Using codeblock type `latex`
 ```
 \documentclass[]{article}
@@ -139,10 +140,11 @@ left justified & center & right justified \\ \hline
 ```
 </details>
 
-<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/caffeine.png?raw=true" width="48">
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/caffeine.png?raw=true" width="100%">
 
 <details>
   <summary>Codeblock</summary>
+
 Using codeblock type `latexsvg`
 ```
 \documentclass{standalone}
@@ -157,10 +159,11 @@ Using codeblock type `latexsvg`
 Note the use of `\hspace` to add whitespace either side of the diagram to reduce the displayed size in obsidian.
 </details>
 
-<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/lindenmayer.png?raw=true" width="48">
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/lindenmayer.png?raw=true" width="80%">
 
 <details>
   <summary>Codeblock</summary>
+
 Using codeblock type `latexsvg`
 ```
 % Lindenmayer systems
