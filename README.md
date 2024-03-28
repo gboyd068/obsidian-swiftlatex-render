@@ -13,12 +13,12 @@ The generated pdf's `<div>` parent has the class `block-language-latex`, so it c
 The generated svg's parent has the class `block-lanuage-latexsvg`.
 
 Examples:
-
-![scrollable_sample](https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/scrollable_sample.png?raw=true)
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/scrollable_sample.png?raw=true" width="48">
 
 <details>
 <summary>Codeblock</summary>
-```latex
+Using codeblock type `latex`
+```
 \documentclass[]{article}
 
 %%%%%%%%%%%%%%%%%%%
@@ -139,11 +139,12 @@ left justified & center & right justified \\ \hline
 ```
 </details>
 
-![molecular drawing of caffeine](https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/caffeine.png?raw=true) 
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/caffeine.png?raw=true" width="48">
 
 <details>
   <summary>Codeblock</summary>
-```latexsvg
+Using codeblock type `latexsvg`
+```
 \documentclass{standalone}
 \usepackage{chemfig}
 \begin{document}
@@ -156,12 +157,12 @@ left justified & center & right justified \\ \hline
 Note the use of `\hspace` to add whitespace either side of the diagram to reduce the displayed size in obsidian.
 </details>
 
-
-![Lindenmayer systems](https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/lindenmayer.png?raw=true) 
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/lindenmayer.png?raw=true" width="48">
 
 <details>
   <summary>Codeblock</summary>
-```latexsvg
+Using codeblock type `latexsvg`
+```
 % Lindenmayer systems
 % Dec 18, 2011, Stefan Kottwitz
 % http://texblog.net
