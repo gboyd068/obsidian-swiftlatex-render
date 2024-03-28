@@ -218,7 +218,7 @@ lindenmayer system -- cycle;
 ```
 </details>
 
-<details>
+</details>
 
 # Limitations
 - All the code required to render the document must be contained within the code block, meaning that any images, \includes etc will not work
