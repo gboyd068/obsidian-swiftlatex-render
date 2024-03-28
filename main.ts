@@ -5,12 +5,14 @@ import * as temp from 'temp';
 import * as path from 'path';
 import {PdfTeXEngine} from './PdfTeXEngine.js';
 import {PDFDocument} from 'pdf-lib';
-const pdftocairo = require('./pdftocairo');
+const PdfToCairo = require("./pdftocairo.js")
+import {optimize} from 'svgo';
 
 interface SwiftlatexRenderSettings {
 	package_url: string,
 	timeout: number,
 	enableCache: boolean,
+	invertColorsInDarkMode: boolean;
 	cache: Array<[string, Set<string>]>;
 	packageCache: Array<StringMap>;
 }
@@ -19,6 +21,7 @@ const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
 	package_url: `https://texlive2.swiftlatex.com/`,
 	timeout: 10000,
 	enableCache: true,
+	invertColorsInDarkMode: true,
 	cache: [],
 	packageCache: [{},{},{},{}]
 }
@@ -154,21 +157,13 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		};
 	}
 
-	async svgToHtml(svgData: any, pdfData:any) {
-		const svgblob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8'});
-		const {width, height} = await this.getPdfDimensions(pdfData);
-		const ratio = width / height;
-		const objectURL = URL.createObjectURL(svgblob);
-		return  {
-			attr: {
-			  data: objectURL,
-			  type: 'image/svg+xml',
-			  class: 'block-lanuage-latexsvg',
-			  style: `aspect-ratio:${ratio}`
-			}
-		};
+	svgToHtml(svg: any) {
+		if (this.settings.invertColorsInDarkMode) {
+			svg = this.colorSVGinDarkMode(svg);
+		}
+		return svg;
 	}
-
+	
 	async getPdfDimensions(pdf: any): Promise<{width: number, height: number}> {
 		const pdfDoc = await PDFDocument.load(pdf);
 		const firstPage = pdfDoc.getPages()[0];
@@ -177,14 +172,33 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 	}
 
 	pdfToSVG(pdfData: any) {
-		pdftocairo.FS.writeFile('input.pdf', pdfData);
-		pdftocairo._convertPdfToSvg();
-		const svg = pdftocairo.FS.readFile('input.svg');
-		// clean up
-		pdftocairo.FS.unlink('input.pdf');
-		pdftocairo.FS.unlink('input.svg');
+		return PdfToCairo().then((pdftocairo: any) => {
+			pdftocairo.FS.writeFile('input.pdf', pdfData);
+			pdftocairo._convertPdfToSvg();
+			let svg = pdftocairo.FS.readFile('input.svg', {encoding:'utf8'});
+
+			// Generate a unique ID for each SVG to avoid conflicts
+			const id = Md5.hashStr(svg.trim()).toString();
+			const svgoConfig =  {
+				plugins: ['sortAttrs', { name: 'prefixIds', params: { prefix: id } }]
+			};
+			svg = optimize(svg, svgoConfig).data; 
+
+			return svg;
+	});
+	}
+
+	colorSVGinDarkMode(svg: string) {
+		// Replace the color "black" with currentColor (the current text color)
+		// so that diagram axes, etc are visible in dark mode
+		// And replace "white" with the background color
+
+		svg = svg.replace(/rgb\(0%, 0%, 0%\)/g, "currentColor")
+				.replace(/rgb\(100%, 100%, 100%\)/g, "var(--background-primary)");
+
 		return svg;
 	}
+
 
 	async renderLatexToElement(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext, outputSVG: boolean = false) {
 		return new Promise<void>((resolve, reject) => {
@@ -197,8 +211,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 				// console.log("Using cached PDF: ", md5Hash);
 				let pdfData = fs.readFileSync(pdfPath);
 				if (outputSVG) {
-					const svg = this.pdfToSVG(pdfData);
-					this.svgToHtml(svg, pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+					this.pdfToSVG(pdfData).then((svg: string) => { el.innerHTML = this.svgToHtml(svg);})
 				} else {
 					this.pdfToHtml(pdfData).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
 				}
@@ -211,8 +224,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 				this.renderLatexToPDF(source, md5Hash).then((r: any) => {
 					if (this.settings.enableCache) this.addFileToCache(md5Hash, ctx.sourcePath);
 					if (outputSVG) {
-						const svg = this.pdfToSVG(r.pdf);
-						this.svgToHtml(svg, r.pdf).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
+						this.pdfToSVG(r.pdf).then((svg: string) => { el.innerHTML = this.svgToHtml(svg);})
 					} else {
 						this.pdfToHtml(r.pdf).then((htmlData)=>{el.createEl("object", htmlData); resolve();});
 					}
@@ -396,6 +408,17 @@ class SampleSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.enableCache)
 				.onChange(async (value) => {
 					this.plugin.settings.enableCache = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Invert dark colors in dark mode')
+			.setDesc('Invert dark colors in diagrams (e.g. axes, arrows) when in dark mode, so that they are visible.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.invertColorsInDarkMode)
+				.onChange(async (value) => {
+					this.plugin.settings.invertColorsInDarkMode = value;
+
 					await this.plugin.saveSettings();
 				}));
 	}
