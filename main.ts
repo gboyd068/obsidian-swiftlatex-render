@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder } from 'obsidian';
+import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder, MarkdownView, MarkdownPreviewRenderer } from 'obsidian';
 import { Md5 } from 'ts-md5';
 import * as fs from 'fs';
 import * as temp from 'temp';
@@ -15,6 +15,7 @@ interface SwiftlatexRenderSettings {
 	invertColorsInDarkMode: boolean;
 	cache: Array<[string, Set<string>]>;
 	packageCache: Array<StringMap>;
+	onlyRenderInReadingMode: boolean;
 }
 
 const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
@@ -23,7 +24,8 @@ const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
 	enableCache: true,
 	invertColorsInDarkMode: true,
 	cache: [],
-	packageCache: [{},{},{},{}]
+	packageCache: [{},{},{},{}],
+	onlyRenderInReadingMode: false,
 }
 
 type StringMap = { [key: string]: string };
@@ -49,8 +51,15 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		this.pdfEngine.setTexliveEndpoint(this.settings.package_url);
 
 		this.addSyntaxHighlighting();
-		this.registerMarkdownCodeBlockProcessor("latex", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, false));
-		this.registerMarkdownCodeBlockProcessor("latexsvg", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, true));
+		if (this.settings.onlyRenderInReadingMode) {
+			const pdfBlockProcessor = MarkdownPreviewRenderer.createCodeBlockPostProcessor("latex", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, false));
+			MarkdownPreviewRenderer.registerPostProcessor(pdfBlockProcessor);
+			const svgBlockProcessor = MarkdownPreviewRenderer.createCodeBlockPostProcessor("latexsvg", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, true));
+			MarkdownPreviewRenderer.registerPostProcessor(svgBlockProcessor);
+		} else {
+			this.registerMarkdownCodeBlockProcessor("latex", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, false));
+			this.registerMarkdownCodeBlockProcessor("latexsvg", (source, el, ctx) => this.renderLatexToElement(source, el, ctx, true));
+		}
 	}
 
 	onunload() {
@@ -423,15 +432,26 @@ class SampleSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Invert dark colors in dark mode')
-			.setDesc('Invert dark colors in diagrams (e.g. axes, arrows) when in dark mode, so that they are visible.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.invertColorsInDarkMode)
-				.onChange(async (value) => {
-					this.plugin.settings.invertColorsInDarkMode = value;
+		.setName('Invert dark colors in dark mode')
+		.setDesc('Invert dark colors in diagrams (e.g. axes, arrows) when in dark mode, so that they are visible.')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.invertColorsInDarkMode)
+			.onChange(async (value) => {
+				this.plugin.settings.invertColorsInDarkMode = value;
 
-					await this.plugin.saveSettings();
-				}));
+				await this.plugin.saveSettings();
+			}));
+
+		new Setting(containerEl)
+		.setName('Only render in Reading mode')
+		.setDesc('Codeblocks are rendered into LaTeX only in Reading mode, not in Preview mode, requires reload to take effect.')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.onlyRenderInReadingMode)
+			.onChange(async (value) => {
+				this.plugin.settings.onlyRenderInReadingMode = value;
+
+				await this.plugin.saveSettings();
+			}));
 	}
 }
 
