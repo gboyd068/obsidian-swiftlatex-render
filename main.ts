@@ -30,6 +30,22 @@ const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
 
 type StringMap = { [key: string]: string };
 
+
+const waitFor = async (condFunc: () => boolean) => {
+	return new Promise<void>((resolve) => {
+	  if (condFunc()) {
+		resolve();
+	  }
+	  else {
+		setTimeout(async () => {
+		  await waitFor(condFunc);
+		  resolve();
+		}, 100);
+	  }
+	});
+  };
+  
+
 export default class SwiftlatexRenderPlugin extends Plugin {
 	settings: SwiftlatexRenderSettings;
 	cacheFolderPath: string;
@@ -199,8 +215,10 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 
 			// Generate a unique ID for each SVG to avoid conflicts
 			const id = Md5.hashStr(svg.trim()).toString();
+			const randomString = Math.random().toString(36).substring(2, 10);
+			const uniqueId = id.concat(randomString);
 			const svgoConfig =  {
-				plugins: ['sortAttrs', { name: 'prefixIds', params: { prefix: id } }]
+				plugins: ['sortAttrs', { name: 'prefixIds', params: { prefix: uniqueId } }]
 			};
 			svg = optimize(svg, svgoConfig).data; 
 
@@ -266,7 +284,15 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		return new Promise(async (resolve, reject) => {
 			source = this.formatLatexSource(source);
 
-			temp.mkdir("obsidian-swiftlatex-renderer", (err, dirPath) => {
+			temp.mkdir("obsidian-swiftlatex-renderer", async (err, dirPath) => {
+				
+				try {
+					await waitFor(() => this.pdfEngine.isReady());
+				} catch (err) {
+					reject(err);
+					return;
+				}
+
 				if (err) reject(err);
 				this.pdfEngine.writeMemFSFile("main.tex", source);
 				this.pdfEngine.setEngineMainFile("main.tex");
