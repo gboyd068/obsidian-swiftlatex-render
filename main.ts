@@ -1,12 +1,20 @@
-import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder, MarkdownView, MarkdownPreviewRenderer } from 'obsidian';
+import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder, MarkdownView, MarkdownPreviewRenderer, DropdownComponent } from 'obsidian';
 import { Md5 } from 'ts-md5';
 import * as fs from 'fs';
 import * as temp from 'temp';
 import * as path from 'path';
 import {PdfTeXEngine} from './PdfTeXEngine.js';
+import {XeTeXEngine} from './XeTeXEngine.js';
+import {DvipdfmxEngine} from './DvipdfmxEngine.js';
 import {PDFDocument} from 'pdf-lib';
 const PdfToCairo = require("./pdftocairo.js")
 import {optimize} from 'svgo';
+import { isSharedArrayBuffer } from 'util/types';
+
+enum CompilerType {
+	PdfTeX,
+	XeTeX
+}
 
 interface SwiftlatexRenderSettings {
 	package_url: string,
@@ -16,6 +24,7 @@ interface SwiftlatexRenderSettings {
 	cache: Array<[string, Set<string>]>;
 	packageCache: Array<StringMap>;
 	onlyRenderInReadingMode: boolean;
+	compiler: CompilerType
 }
 
 const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
@@ -26,6 +35,96 @@ const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
 	cache: [],
 	packageCache: [{},{},{},{}],
 	onlyRenderInReadingMode: false,
+	compiler: CompilerType.PdfTeX
+}
+
+class PdfXeTeXEngine {
+	xetEng: any;
+	dviEng: any;
+	pluginRef: SwiftlatexRenderPlugin
+
+	constructor(plugin: SwiftlatexRenderPlugin) {
+		this.xetEng = new XeTeXEngine();
+		this.dviEng = new DvipdfmxEngine();
+		this.pluginRef = plugin;
+	}
+
+	async loadEngine() {
+		await this.xetEng.loadEngine();
+		await this.dviEng.loadEngine();
+	}
+
+
+	setTexliveEndpoint(url: string) {
+		this.xetEng.setTexliveEndpoint(url);
+		this.dviEng.setTexliveEndpoint(url);
+	}
+
+	writeTexFSFile(filename: string, srccode: any) {
+		this.xetEng.writeTexFSFile(filename, srccode);
+		this.dviEng.writeTexFSFile(filename, srccode);
+	}
+	
+
+	writeCacheData(texlive404_cache: StringMap, texlive200_cache: StringMap, font404_cache: StringMap, font200_cache: StringMap) {
+		this.xetEng.writeCacheData({}, texlive200_cache, font404_cache, font200_cache);
+	}
+
+	flushCache() {
+		this.xetEng.flushCache();
+	}
+
+	isReady() {
+		return this.xetEng.isReady() && this.dviEng.isReady();
+	}
+
+
+	writeMemFSFile(filename: string, source: any) {
+		this.xetEng.writeMemFSFile("main.tex", source);
+	}
+
+	setEngineMainFile(file: string) {
+		this.xetEng.setEngineMainFile("main.tex");
+	}
+
+
+
+	compileLaTeX() : Promise<any> {
+		return new Promise<any>((resolve) => {
+			this.xetEng.compileLaTeX().then((xetResult: any) => {
+				// send the error up
+				if (xetResult.status != 0) {
+					resolve(xetResult);
+					return;
+				}
+
+				let xdv = xetResult.pdf;
+
+				this.dviEng.writeMemFSFile("main.xdv", xdv);
+				this.dviEng.setEngineMainFile("main.xdv");
+				this.dviEng.compilePDF().then((dviResult: any) => {
+					resolve(dviResult)
+				})
+				})
+			})
+		}
+
+		fetchCacheData(): Promise<StringMap[]> {
+			return new Promise<StringMap[]>((resolve) => {
+				this.xetEng.fetchCacheData().then((xetcache: StringMap[]) =>{
+					this.dviEng.fetchCacheData().then((dvicache: StringMap[]) =>{
+						const mergedcache = xetcache.map((item:any, index:any) => ({ ...item, ...dvicache[index] }));
+						resolve(mergedcache);
+					});
+				});
+			})
+		}
+
+		fetchTexFiles(newFileNames:any, cachepath: string) {
+			this.xetEng.fetchTexFiles(newFileNames, cachepath);
+			this.dviEng.fetchTexFiles(newFileNames, cachepath);
+		}
+
 }
 
 type StringMap = { [key: string]: string };
@@ -51,7 +150,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 	cacheFolderPath: string;
 	packageCacheFolderPath: string;
 	pluginFolderPath: string;
-	pdfEngine: any;
+	pdfEngine: PdfXeTeXEngine;
 
 	cache: Map<string, Set<string>>; // Key: md5 hash of latex source. Value: Set of file path names.
 
@@ -61,7 +160,13 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		this.pluginFolderPath = path.join(this.getVaultPath(), this.app.vault.configDir, "plugins/swiftlatex-render/");
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 		// initialize the latex compiler
-		this.pdfEngine = new PdfTeXEngine();
+		if (this.settings.compiler === CompilerType.PdfTeX) {
+			this.pdfEngine = new PdfTeXEngine();
+		}
+		if (this.settings.compiler === CompilerType.XeTeX) {
+			this.pdfEngine = new PdfXeTeXEngine(this);
+		}
+		
 		await this.pdfEngine.loadEngine();
 		await this.loadPackageCache();
 		this.pdfEngine.setTexliveEndpoint(this.settings.package_url);
@@ -287,7 +392,9 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			temp.mkdir("obsidian-swiftlatex-renderer", async (err, dirPath) => {
 				
 				try {
-					await waitFor(() => this.pdfEngine.isReady());
+					await waitFor(() => {
+						return this.pdfEngine.isReady()
+					})
 				} catch (err) {
 					reject(err);
 					return;
@@ -311,14 +418,12 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 
 	fetchPackageCacheData(): void {
 		this.pdfEngine.fetchCacheData().then((r: StringMap[]) => {
-			for (var i = 0; i < r.length; i++) {
-				if (i === 1) { // currently only dealing with texlive200_cache
-					// get diffs
-					const newFileNames = this.getNewPackageFileNames(this.settings.packageCache[i], r[i]);
-					// fetch new package files
-					this.pdfEngine.fetchTexFiles(newFileNames, this.packageCacheFolderPath);
-				}
-			}
+			// get diffs
+			let merged = {...r[1], ...r[3]};
+			const newFileNames = this.getNewPackageFileNames(this.settings.packageCache[1], merged);
+			console.log(newFileNames);
+			// fetch new package files
+			this.pdfEngine.fetchTexFiles(newFileNames, this.packageCacheFolderPath);
 			this.settings.packageCache = r;
 			this.saveSettings().then(); // hmm
 		});
@@ -478,6 +583,27 @@ class SampleSettingTab extends PluginSettingTab {
 
 				await this.plugin.saveSettings();
 			}));
+
+		new Setting(containerEl)
+			.setName('LaTeX Compiler')
+			.setDesc('LaTeX Compiler type to use, package caches are not shared between compilers, please reload and delete your package cache upon switching')
+			.addDropdown(dropdown => {
+				dropdown.addOption('PdfTeX', 'PdfTeX');
+				dropdown.addOption('XeTeX', 'XeTeX');
+				if (this.plugin.settings.compiler === 0) {
+					dropdown.setValue('PdfTeX')
+				} else {
+					dropdown.setValue('XeTeX')
+				}
+				dropdown.onChange(async (value) => {
+					if (value === 'PdfTeX') {
+						this.plugin.settings.compiler = CompilerType.PdfTeX;
+					}
+					if (value === 'XeTeX') {
+						this.plugin.settings.compiler = CompilerType.XeTeX;
+					}
+					await this.plugin.saveSettings();
+		})});
 	}
 }
 

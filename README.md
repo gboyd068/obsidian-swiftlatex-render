@@ -12,6 +12,7 @@ The content inside of the supported code blocks will be rendered using the given
 The generated pdf's `<div>` parent has the class `block-language-latex`, so it can be styled using CSS snippets. For example, if you are using dark mode you can set `filter: invert(100%)` to invert the colours for a quick hack for dark themed diagrams.
 The generated svg's parent has the class `block-lanuage-latexsvg`.
 
+PdfTeX is used by default, or XeTeX can be selected in the settings for unicode support, although not all font files may be provided on the swiftlatex server, meaning they may need to be supplied by the method described for `.sty` files in the FAQ.
 ## Examples:
 
 <details>
@@ -235,7 +236,7 @@ The plugin also caches used packages in `.obsidian/swiftlatex-render-cache/packa
 You can host your own package server using the repo at https://github.com/SwiftLaTeX/Texlive-Ondemand , which might be required if using very recent packages as the default url uses a slightly outdated version of TeX Live
 
 # Building from source
-1. follow the instructions in https://github.com/gboyd068/SwiftLaTeX to use Emscripten to build `swiftlatexpdftex.worker.js` within the `pdftex.wasm` directory (currently only PdfTeX is supported)
+1. follow the instructions in https://github.com/gboyd068/SwiftLaTeX to use Emscripten to build `swiftlatexpdftex.worker.js` within the `pdftex.wasm` directory and similarly for the other engine files
 2. Within that repo, run `tsc PdfTeXEngine.tsx` to build `PdfTeXEngine.js` from the Typescript source
 3. Clone this repository `git clone https://github.com/gboyd068/obsidian-swiftlatex-render`
 and copy the two output files mentioned above into the `obsidian-swiftlatex-render` directory
