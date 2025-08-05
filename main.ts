@@ -576,7 +576,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('LaTeX Compiler')
-			.setDesc('LaTeX Compiler type to use, package caches are not shared between compilers, please reload and delete your package cache upon switching')
+			.setDesc('LaTeX Compiler type to use, package caches are not shared between compilers, please reload and delete your package cache upon switching. Currently only PdfTeX is able to fetch packages on demand from CTAN.')
 			.addDropdown(dropdown => {
 				dropdown.addOption('PdfTeX', 'PdfTeX');
 				dropdown.addOption('XeTeX', 'XeTeX');

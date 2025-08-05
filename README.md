@@ -1,6 +1,6 @@
 # Obsidian SwiftLaTeX Renderer
 
-This plugin renders codeblocks with the label `latex` into a pdf, or into svg when using the label `latexsvg`. This is achieved using the SwiftLaTeX wasm LaTeX compiler built into the plugin, which has no other dependencies. Packages are fetched on-demand from https://texlive2.swiftlatex.com/, by default.
+This plugin renders codeblocks with the label `latex` into a pdf, or into svg when using the label `latexsvg`. This is achieved using the SwiftLaTeX wasm LaTeX compiler built into the plugin, which has no other dependencies. Packages are fetched on-demand from CTAN
 The plugin additionally uses the poppler utility `pdftocairo` compiled to wasm to support converting pdf to svg.
 
 # Setup
@@ -12,7 +12,8 @@ The content inside of the supported code blocks will be rendered using the given
 The generated pdf's `<div>` parent has the class `block-language-latex`, so it can be styled using CSS snippets. For example, if you are using dark mode you can set `filter: invert(100%)` to invert the colours for a quick hack for dark themed diagrams.
 The generated svg's parent has the class `block-lanuage-latexsvg`.
 
-PdfTeX is used by default, or XeTeX can be selected in the settings for unicode support, although not all font files may be provided on the swiftlatex server, meaning they may need to be supplied by the method described for `.sty` files in the FAQ.
+PdfTeX is used by default, or XeTeX can be selected in the settings for unicode support. 
+WARNING: XeTeX has not yet been updated for CTAN support, so will not work at the moment unless you supply packages yourself or have cached pdfs.
 ## Examples:
 
 <details>
@@ -232,9 +233,6 @@ By default the plugin will keep generated `.pdf` files in `.obsidian/swiftlatex-
 ### Packages
 The plugin also caches used packages in `.obsidian/swiftlatex-render-cache/package-cache`, loading the packages back into the virtual file system used by the WebAssembly on startup
 
-# Self-Hosting Packages
-You can host your own package server using the repo at https://github.com/SwiftLaTeX/Texlive-Ondemand , which might be required if using very recent packages as the default url uses a slightly outdated version of TeX Live
-
 # Building from source
 1. follow the instructions in https://github.com/gboyd068/SwiftLaTeX to use Emscripten to build `swiftlatexpdftex.worker.js` within the `pdftex.wasm` directory and similarly for the other engine files
 2. Within that repo, run `tsc PdfTeXEngine.tsx` to build `PdfTeXEngine.js` from the Typescript source
@@ -247,8 +245,8 @@ and copy the two output files mentioned above into the `obsidian-swiftlatex-rend
 
 **Q: How can I solve package.sty is not found?**
 
-**A:** If you are getting package not found errors, it is possible that the package you want is not available at https://texlive2.swiftlatex.com/ .
-If this happens, you can download the `package.sty` file and place it in the package cache directory, which is `.obsidian/swiftlatex-render-cache/package-cache` by default.
+**A:** If you are getting package not found errors, please raise an issue.
+In the meantime, you can download the `package.sty` file and place it in the package cache directory, which is `.obsidian/swiftlatex-render-cache/package-cache` by default.
 After restarting obsidian, this package will be available to the compiler.
 
 **Q: Why do pdfs created with the `latex` codeblock not appear when I export to pdf?**
