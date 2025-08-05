@@ -7,10 +7,10 @@ const tar = require('tar-stream');
 async function buildPackageToPathIndex() {
   // needs error handling
   const index = {};
-  const response = await requestUrl("https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlcontrib/tlpkg/texlive.tlpdb"); // store this??
+  const response = await requestUrl("https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet/tlpkg/texlive.tlpdb"); // store this??
   const tlpdbContent = await response.text;
   console.log("got texlive response text");
-  var readStream = Readable.from(tlpdbContent)
+  var readStream = Readable.from(tlpdbContent);
   const rl = readline.createInterface({ input: readStream });
 
   let currentPkg = null;
@@ -122,13 +122,13 @@ async function fetchTeXLiveFiles(pkg, filename) {
   if (zipUrl === `https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet/archive/00texlive.image.tar.xz`) {
     zipUrl = "https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/Source/texlive-20250308-devsource.tar.xz"; // TODO dynamically fetch correct date
   }
-  console.log(`Trying to download and extract from: ${zipUrl}`);
+  // console.log(`Trying to download and extract from: ${zipUrl}`);
 
   try {
-    console.log("trying tar download")
+    // console.log("trying tar download")
     const tarresponse = await retryRequestUrl(zipUrl);
     const tarbuffer = await tarresponse.arrayBuffer
-    console.log("trying untar")
+    // console.log("trying untar")
     const filemap = await extractTarXz(tarbuffer, filename)
     return filemap;
   } catch (e) {

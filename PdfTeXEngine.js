@@ -140,17 +140,15 @@ var PdfTeXEngine = /** @class */ (function () {
                     case 1:
                         _c.sent();
                         // move this to somewhere less error-prone and allow caching
-                        console.log("building TeXLive lookups");
                         _a = this;
                         return [4 /*yield*/, (0, texlivedownload_js_1.buildPackageToPathIndex)()];
                     case 2:
+                        // move this to somewhere less error-prone and allow caching
                         _a.packageToPathIndex = _c.sent();
-                        console.log("requested Url");
                         _b = this;
                         return [4 /*yield*/, (0, texlivedownload_js_1.buildFilenameToPackageIndex)(this.packageToPathIndex)];
                     case 3:
                         _b.filenameToPackageIndex = _c.sent();
-                        console.log("Finished building TeXLive lookups");
                         this.latexWorker.onmessage = function (_) { };
                         this.latexWorker.onerror = function (_) { };
                         return [2 /*return*/];
@@ -196,19 +194,13 @@ var PdfTeXEngine = /** @class */ (function () {
                                                 if (result === 'ok') {
                                                     pdf = new Uint8Array(data['pdf']);
                                                     nice_report.pdf = pdf;
-                                                    resolve(nice_report);
                                                 }
-                                                else if (result === 'failed') {
-                                                    nice_report.status = status_1;
-                                                    nice_report.log = log;
-                                                    reject(nice_report);
-                                                }
+                                                resolve(nice_report);
                                                 return [3 /*break*/, 5];
                                             case 1:
                                                 if (!(cmd === "downloadFromCTAN")) return [3 /*break*/, 5];
                                                 filename = data.filename;
                                                 id = data.id;
-                                                console.log("main trying to download files related to", filename, "id:", id);
                                                 _a.label = 2;
                                             case 2:
                                                 _a.trys.push([2, 4, , 5]);
