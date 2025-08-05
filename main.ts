@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder, MarkdownView, MarkdownPreviewRenderer, DropdownComponent, requestUrl } from 'obsidian';
+import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TFile, MarkdownPreviewRenderer } from 'obsidian';
 import { Md5 } from 'ts-md5';
 import * as fs from 'fs';
 import * as temp from 'temp';
@@ -9,7 +9,6 @@ import {DvipdfmxEngine} from './DvipdfmxEngine.js';
 import {PDFDocument} from 'pdf-lib';
 const PdfToCairo = require("./pdftocairo.js")
 import {optimize} from 'svgo';
-import { isSharedArrayBuffer } from 'util/types';
 
 enum CompilerType {
 	PdfTeX,
@@ -28,7 +27,7 @@ interface SwiftlatexRenderSettings {
 }
 
 const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
-	package_url: `https://texlive2.swiftlatex.com/`,
+	package_url: `https://texlive2.swiftlatex.com/`, // deprecated
 	timeout: 10000,
 	enableCache: true,
 	invertColorsInDarkMode: true,
@@ -249,7 +248,6 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		// move packages to the VFS
 		for (const [key, val] of Object.entries(this.settings.packageCache[1])) {
 			const filename = path.basename(val);
-			let read_success = false;
 			try {
 				const srccode = fs.readFileSync(path.join(this.packageCacheFolderPath, filename));
 				this.pdfEngine.writeTexFSFile(filename, srccode);
@@ -423,7 +421,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			// get diffs
 			let merged = {...r[1], ...r[3]};
 			const newFileNames = this.getNewPackageFileNames(this.settings.packageCache[1], merged);
-			console.log(newFileNames);
+			// console.log(newFileNames);
 			// fetch new package files
 			this.pdfEngine.fetchTexFiles(newFileNames, this.packageCacheFolderPath);
 			this.settings.packageCache = r;
@@ -543,16 +541,6 @@ class SampleSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 
 		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Package Fetching URL')
-			.setDesc('default: https://texlive2.swiftlatex.com/, reload required to take effect')
-			.addText(text => text
-				.setValue(this.plugin.settings.package_url.toString())
-				.onChange(async (value) => {
-					this.plugin.settings.package_url = value;
-					await this.plugin.saveSettings();
-				}));
 
 		new Setting(containerEl)
 			.setName('Enable caching of PDFs')
