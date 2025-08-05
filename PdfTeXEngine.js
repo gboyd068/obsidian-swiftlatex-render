@@ -1,4 +1,5 @@
 "use strict";
+// @ts-nocheck
 /********************************************************************************
  * Copyright (C) 2019 Elliott Wen.
  *
@@ -29,7 +30,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+        while (_) try {
             if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
             if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
@@ -50,7 +51,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-Object.defineProperty(exports, "__esModule", { value: true });
+exports.__esModule = true;
 exports.PdfTeXEngine = exports.CompileResult = exports.EngineStatus = void 0;
 var EngineStatus;
 (function (EngineStatus) {
@@ -58,10 +59,12 @@ var EngineStatus;
     EngineStatus[EngineStatus["Ready"] = 2] = "Ready";
     EngineStatus[EngineStatus["Busy"] = 3] = "Busy";
     EngineStatus[EngineStatus["Error"] = 4] = "Error";
-})(EngineStatus || (exports.EngineStatus = EngineStatus = {}));
+})(EngineStatus = exports.EngineStatus || (exports.EngineStatus = {}));
 var fs = require("fs");
 var path = require("path");
 var swiftlatexpdftex_worker_js_1 = require("./swiftlatexpdftex.worker.js");
+var texlivedownload_js_1 = require("./texlivedownload.js"); //should just build and save these...
+var obsidian_1 = require("obsidian");
 var CompileResult = /** @class */ (function () {
     function CompileResult() {
         this.pdf = undefined;
@@ -75,19 +78,52 @@ var PdfTeXEngine = /** @class */ (function () {
     function PdfTeXEngine() {
         this.latexWorker = undefined;
         this.latexWorkerStatus = EngineStatus.Init;
+        this.filenameToPackageIndex = {};
+        this.packageToPathIndex = {};
     }
-    PdfTeXEngine.prototype.loadEngine = function () {
+    PdfTeXEngine.prototype.downloadCTANFiles = function (filename) {
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
+            var filedatas, url, response, text, pkg, filepaths;
             return __generator(this, function (_a) {
                 switch (_a.label) {
+                    case 0:
+                        if (!(filename === "swiftlatexpdftex.fmt")) return [3 /*break*/, 3];
+                        filedatas = new Map();
+                        console.log("downloading", filename);
+                        url = "https://github.com/gboyd068/Texlive-Ondemand/raw/refs/heads/master/swiftlatexpdftex.fmt";
+                        return [4 /*yield*/, (0, obsidian_1.requestUrl)(url)];
+                    case 1:
+                        response = _a.sent();
+                        return [4 /*yield*/, response.arrayBuffer];
+                    case 2:
+                        text = _a.sent();
+                        filedatas.set(filename, text);
+                        return [2 /*return*/, filedatas];
+                    case 3:
+                        pkg = this.filenameToPackageIndex[filename];
+                        if (pkg === undefined) {
+                            return [2 /*return*/];
+                        }
+                        filepaths = this.packageToPathIndex[pkg];
+                        return [4 /*yield*/, (0, texlivedownload_js_1.fetchTeXLiveFiles)(pkg, filename)];
+                    case 4: return [2 /*return*/, _a.sent()];
+                }
+            });
+        });
+    };
+    PdfTeXEngine.prototype.loadEngine = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, _b;
+            var _this = this;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0:
                         if (this.latexWorker !== undefined) {
                             throw new Error('Other instance is running, abort()');
                         }
                         this.latexWorkerStatus = EngineStatus.Init;
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.latexWorker = (0, swiftlatexpdftex_worker_js_1.default)();
+                                _this.latexWorker = (0, swiftlatexpdftex_worker_js_1["default"])();
                                 _this.latexWorker.onmessage = function (ev) {
                                     var data = ev['data'];
                                     var cmd = data['result'];
@@ -102,11 +138,21 @@ var PdfTeXEngine = /** @class */ (function () {
                                 };
                             })];
                     case 1:
-                        _a.sent();
-                        this.latexWorker.onmessage = function (_) {
-                        };
-                        this.latexWorker.onerror = function (_) {
-                        };
+                        _c.sent();
+                        // move this to somewhere less error-prone and allow caching
+                        console.log("building TeXLive lookups");
+                        _a = this;
+                        return [4 /*yield*/, (0, texlivedownload_js_1.buildPackageToPathIndex)()];
+                    case 2:
+                        _a.packageToPathIndex = _c.sent();
+                        console.log("requested Url");
+                        _b = this;
+                        return [4 /*yield*/, (0, texlivedownload_js_1.buildFilenameToPackageIndex)(this.packageToPathIndex)];
+                    case 3:
+                        _b.filenameToPackageIndex = _c.sent();
+                        console.log("Finished building TeXLive lookups");
+                        this.latexWorker.onmessage = function (_) { };
+                        this.latexWorker.onerror = function (_) { };
                         return [2 /*return*/];
                 }
             });
@@ -130,33 +176,62 @@ var PdfTeXEngine = /** @class */ (function () {
                         this.checkEngineStatus();
                         this.latexWorkerStatus = EngineStatus.Busy;
                         start_compile_time = performance.now();
-                        return [4 /*yield*/, new Promise(function (resolve, _) {
-                                _this.latexWorker.onmessage = function (ev) {
-                                    var data = ev['data'];
-                                    var cmd = data['cmd'];
-                                    if (cmd !== "compile")
-                                        return;
-                                    var result = data['result'];
-                                    var log = data['log'];
-                                    var status = data['status'];
-                                    _this.latexWorkerStatus = EngineStatus.Ready;
-                                    console.log('Engine compilation finish ' + (performance.now() - start_compile_time));
-                                    var nice_report = new CompileResult();
-                                    nice_report.status = status;
-                                    nice_report.log = log;
-                                    if (result === 'ok') {
-                                        var pdf = new Uint8Array(data['pdf']);
-                                        nice_report.pdf = pdf;
-                                    }
-                                    resolve(nice_report);
-                                };
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                _this.latexWorker.onmessage = function (ev) { return __awaiter(_this, void 0, void 0, function () {
+                                    var data, cmd, result, log, status_1, nice_report, pdf, filename, id, filedatas, error_1;
+                                    return __generator(this, function (_a) {
+                                        switch (_a.label) {
+                                            case 0:
+                                                data = ev['data'];
+                                                cmd = data['cmd'];
+                                                if (!(cmd === "compile")) return [3 /*break*/, 1];
+                                                result = data['result'];
+                                                log = data['log'];
+                                                status_1 = data['status'];
+                                                this.latexWorkerStatus = EngineStatus.Ready;
+                                                console.log('Engine compilation finish ' + (performance.now() - start_compile_time));
+                                                nice_report = new CompileResult();
+                                                nice_report.status = status_1;
+                                                nice_report.log = log;
+                                                if (result === 'ok') {
+                                                    pdf = new Uint8Array(data['pdf']);
+                                                    nice_report.pdf = pdf;
+                                                    resolve(nice_report);
+                                                }
+                                                else if (result === 'failed') {
+                                                    nice_report.status = status_1;
+                                                    nice_report.log = log;
+                                                    reject(nice_report);
+                                                }
+                                                return [3 /*break*/, 5];
+                                            case 1:
+                                                if (!(cmd === "downloadFromCTAN")) return [3 /*break*/, 5];
+                                                filename = data.filename;
+                                                id = data.id;
+                                                console.log("main trying to download files related to", filename, "id:", id);
+                                                _a.label = 2;
+                                            case 2:
+                                                _a.trys.push([2, 4, , 5]);
+                                                return [4 /*yield*/, this.downloadCTANFiles(filename)];
+                                            case 3:
+                                                filedatas = _a.sent();
+                                                // if (filedatas === undefined) throw Error(`no filedata received for ${filename}`);
+                                                this.latexWorker.postMessage({ cmd: "sendCTANFiles", id: id, result: filedatas, error: false });
+                                                return [3 /*break*/, 5];
+                                            case 4:
+                                                error_1 = _a.sent();
+                                                this.latexWorker.postMessage({ cmd: "sendCTANFiles", id: id, result: undefined, error: error_1 });
+                                                return [3 /*break*/, 5];
+                                            case 5: return [2 /*return*/];
+                                        }
+                                    });
+                                }); };
                                 _this.latexWorker.postMessage({ 'cmd': 'compilelatex' });
                                 console.log('Engine compilation start');
                             })];
                     case 1:
                         res = _a.sent();
-                        this.latexWorker.onmessage = function (_) {
-                        };
+                        this.latexWorker.onmessage = function (_) { };
                         return [2 /*return*/, res];
                 }
             });
@@ -193,8 +268,7 @@ var PdfTeXEngine = /** @class */ (function () {
                     };
                     _this.latexWorker.postMessage({ 'cmd': 'compileformat' });
                 });
-                this.latexWorker.onmessage = function (_) {
-                };
+                this.latexWorker.onmessage = function (_) { };
                 return [2 /*return*/];
             });
         });
@@ -227,8 +301,7 @@ var PdfTeXEngine = /** @class */ (function () {
                         })];
                     case 1:
                         res = _a.sent();
-                        this.latexWorker.onmessage = function (_) {
-                        };
+                        this.latexWorker.onmessage = function (_) { };
                         return [2 /*return*/, res];
                 }
             });

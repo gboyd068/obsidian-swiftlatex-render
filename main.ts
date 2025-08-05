@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder, MarkdownView, MarkdownPreviewRenderer, DropdownComponent } from 'obsidian';
+import { App, FileSystemAdapter, MarkdownPostProcessorContext, Plugin, PluginSettingTab, SectionCache, Setting, TFile, TFolder, MarkdownView, MarkdownPreviewRenderer, DropdownComponent, requestUrl } from 'obsidian';
 import { Md5 } from 'ts-md5';
 import * as fs from 'fs';
 import * as temp from 'temp';
@@ -161,6 +161,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 		// initialize the latex compiler
 		if (this.settings.compiler === CompilerType.PdfTeX) {
+			// @ts-ignore
 			this.pdfEngine = new PdfTeXEngine();
 		}
 		if (this.settings.compiler === CompilerType.XeTeX) {
@@ -325,6 +326,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			const svgoConfig =  {
 				plugins: ['sortAttrs', { name: 'prefixIds', params: { prefix: uniqueId } }]
 			};
+			// @ts-ignore
 			svg = optimize(svg, svgoConfig).data; 
 
 			return svg;
