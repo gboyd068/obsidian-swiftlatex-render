@@ -3,6 +3,8 @@ const readline = require('readline');
 const { Readable } = require('stream');
 import { XzReadableStream } from 'xz-decompress';
 const tar = require('tar-stream');
+const https = require('https');
+const { URL } = require('url');
 
 async function buildPackageToPathIndex() {
   // needs error handling
@@ -120,7 +122,8 @@ async function fetchTeXLiveFiles(pkg, filename) {
   var zipUrl = `https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet/archive/${pkg}.tar.xz`; // TODO have some CTAN mirror checking system
   // yet another hack because the texlive source files aren't in the same place as the package files
   if (zipUrl === `https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet/archive/00texlive.image.tar.xz`) {
-    zipUrl = "https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/Source/texlive-20250308-devsource.tar.xz"; // TODO dynamically fetch correct date
+    devsourceUrl = await findDevsourceFile("https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/Source");
+    zipUrl = devsourceUrl;
   }
   // console.log(`Trying to download and extract from: ${zipUrl}`);
 
@@ -134,6 +137,56 @@ async function fetchTeXLiveFiles(pkg, filename) {
   } catch (e) {
     console.error(`Failed to extract from package ${pkg}: ${e.message}`);
   }
+}
+
+
+
+async function fetchUrl(url) {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            let data = '';
+            let finalUrl = url; // Track the final URL after redirects
+
+            if (res.statusCode === 301 || res.statusCode === 302) {
+                // Update finalUrl to the redirect location
+                finalUrl = new URL(res.headers.location, url).toString();
+                // Recursively follow the redirect
+                resolve(fetchUrl(finalUrl));
+                return;
+            }
+
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+
+            res.on('end', () => {
+                resolve({ data, finalUrl });
+            });
+        }).on('error', (err) => {
+            reject(err);
+        });
+    });
+}
+
+async function findDevsourceFile(url) {
+    try {
+        const { data: html, finalUrl } = await fetchUrl(url);
+        const regex = /href="([^"]*devsource[^"]*)"/;
+        const match = html.match(regex);
+
+        if (match && match[1]) {
+            // Use finalUrl as the base for resolving the file path
+            const fileUrl = new URL(match[1], finalUrl).toString();
+            // console.log('Found devsource file URL:', fileUrl);
+            return fileUrl;
+        } else {
+            console.error('No TeXLive devsource file found.');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching or parsing the page:', error);
+        return null;
+    }
 }
 
 

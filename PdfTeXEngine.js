@@ -25,12 +25,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
             if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
             if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
@@ -51,7 +51,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.PdfTeXEngine = exports.CompileResult = exports.EngineStatus = void 0;
 var EngineStatus;
 (function (EngineStatus) {
@@ -59,7 +59,7 @@ var EngineStatus;
     EngineStatus[EngineStatus["Ready"] = 2] = "Ready";
     EngineStatus[EngineStatus["Busy"] = 3] = "Busy";
     EngineStatus[EngineStatus["Error"] = 4] = "Error";
-})(EngineStatus = exports.EngineStatus || (exports.EngineStatus = {}));
+})(EngineStatus || (exports.EngineStatus = EngineStatus = {}));
 var fs = require("fs");
 var path = require("path");
 var swiftlatexpdftex_worker_js_1 = require("./swiftlatexpdftex.worker.js");
@@ -97,6 +97,8 @@ var PdfTeXEngine = /** @class */ (function () {
                         return [4 /*yield*/, response.arrayBuffer];
                     case 2:
                         text = _a.sent();
+                        console.log("downloaded version");
+                        console.log(text);
                         filedatas.set(filename, text);
                         return [2 /*return*/, filedatas];
                     case 3:
@@ -123,7 +125,7 @@ var PdfTeXEngine = /** @class */ (function () {
                         }
                         this.latexWorkerStatus = EngineStatus.Init;
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                _this.latexWorker = (0, swiftlatexpdftex_worker_js_1["default"])();
+                                _this.latexWorker = (0, swiftlatexpdftex_worker_js_1.default)();
                                 _this.latexWorker.onmessage = function (ev) {
                                     var data = ev['data'];
                                     var cmd = data['result'];
@@ -229,42 +231,99 @@ var PdfTeXEngine = /** @class */ (function () {
             });
         });
     };
-    /* Internal Use */
     PdfTeXEngine.prototype.compileFormat = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var start_compile_time, res;
             var _this = this;
             return __generator(this, function (_a) {
-                this.checkEngineStatus();
-                this.latexWorkerStatus = EngineStatus.Busy;
-                new Promise(function (resolve, reject) {
-                    _this.latexWorker.onmessage = function (ev) {
-                        var data = ev['data'];
-                        var cmd = data['cmd'];
-                        if (cmd !== "compile")
-                            return;
-                        var result = data['result'];
-                        var log = data['log'];
-                        // const status: number = data['status'] as number;
-                        _this.latexWorkerStatus = EngineStatus.Ready;
-                        if (result === 'ok') {
-                            var formatArray = data['pdf']; /* PDF for result */
-                            var formatBlob = new Blob([formatArray], { type: 'application/octet-stream' });
-                            var formatURL_1 = URL.createObjectURL(formatBlob);
-                            setTimeout(function () { URL.revokeObjectURL(formatURL_1); }, 30000);
-                            console.log('Download format file via ' + formatURL_1);
-                            resolve();
-                        }
-                        else {
-                            reject(log);
-                        }
-                    };
-                    _this.latexWorker.postMessage({ 'cmd': 'compileformat' });
-                });
-                this.latexWorker.onmessage = function (_) { };
-                return [2 /*return*/];
+                switch (_a.label) {
+                    case 0:
+                        this.checkEngineStatus();
+                        this.latexWorkerStatus = EngineStatus.Busy;
+                        start_compile_time = performance.now();
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                _this.latexWorker.onmessage = function (ev) { return __awaiter(_this, void 0, void 0, function () {
+                                    var data, cmd, result, log, status_2, nice_report, pdf, filename, id, filedatas, error_2;
+                                    return __generator(this, function (_a) {
+                                        switch (_a.label) {
+                                            case 0:
+                                                data = ev['data'];
+                                                cmd = data['cmd'];
+                                                if (!(cmd === "compile")) return [3 /*break*/, 1];
+                                                result = data['result'];
+                                                log = data['log'];
+                                                status_2 = data['status'];
+                                                this.latexWorkerStatus = EngineStatus.Ready;
+                                                console.log('Engine compilation finish ' + (performance.now() - start_compile_time));
+                                                nice_report = new CompileResult();
+                                                nice_report.status = status_2;
+                                                nice_report.log = log;
+                                                if (result === 'ok') {
+                                                    pdf = new Uint8Array(data['pdf']);
+                                                    nice_report.pdf = pdf;
+                                                }
+                                                resolve(nice_report);
+                                                return [3 /*break*/, 5];
+                                            case 1:
+                                                if (!(cmd === "downloadFromCTAN")) return [3 /*break*/, 5];
+                                                filename = data.filename;
+                                                id = data.id;
+                                                _a.label = 2;
+                                            case 2:
+                                                _a.trys.push([2, 4, , 5]);
+                                                return [4 /*yield*/, this.downloadCTANFiles(filename)];
+                                            case 3:
+                                                filedatas = _a.sent();
+                                                // if (filedatas === undefined) throw Error(`no filedata received for ${filename}`);
+                                                this.latexWorker.postMessage({ cmd: "sendCTANFiles", id: id, result: filedatas, error: false });
+                                                return [3 /*break*/, 5];
+                                            case 4:
+                                                error_2 = _a.sent();
+                                                this.latexWorker.postMessage({ cmd: "sendCTANFiles", id: id, result: undefined, error: error_2 });
+                                                return [3 /*break*/, 5];
+                                            case 5: return [2 /*return*/];
+                                        }
+                                    });
+                                }); };
+                                _this.latexWorker.postMessage({ 'cmd': 'compileformat' });
+                                console.log('Format compilation start');
+                            })];
+                    case 1:
+                        res = _a.sent();
+                        this.latexWorker.onmessage = function (_) { };
+                        return [2 /*return*/, res];
+                }
             });
         });
     };
+    /* Internal Use */
+    // public async compileFormat(): Promise<void> {
+    // 	this.checkEngineStatus();
+    // 	this.latexWorkerStatus = EngineStatus.Busy;
+    // 	new Promise((resolve, reject) => {
+    // 		this.latexWorker!.onmessage = (ev: any) => {
+    // 			const data: any = ev['data'];
+    // 			const cmd: string =  data['cmd'] as string;
+    // 			if (cmd !== "compile") return;
+    // 			const result: string = data['result'] as string;
+    // 			const log: string =  data['log'] as string;
+    // 			// const status: number = data['status'] as number;
+    // 			this.latexWorkerStatus = EngineStatus.Ready;
+    // 			if (result === 'ok') {
+    // 				const formatArray = data['pdf']; /* PDF for result */
+    // 				const formatBlob = new Blob([formatArray], { type: 'application/octet-stream' });
+    // 				const formatURL = URL.createObjectURL(formatBlob);
+    // 				setTimeout(() => { URL.revokeObjectURL(formatURL); }, 30000);
+    // 				console.log('Download format file via ' + formatURL);
+    // 				resolve();
+    // 			} else {
+    // 				reject(log);
+    // 			}
+    // 		};
+    // 		this.latexWorker!.postMessage({ 'cmd': 'compileformat' });
+    // 	});
+    // 	this.latexWorker!.onmessage = (_: any) => {};
+    // }
     PdfTeXEngine.prototype.fetchCacheData = function () {
         return __awaiter(this, void 0, void 0, function () {
             var res;
