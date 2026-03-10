@@ -18,7 +18,7 @@ WARNING: XeTeX has not yet been updated for CTAN support, so will not work at th
 
 <details>
 
-<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/scrollable_sample.png?raw=true" width="60%" display="block" margin="auto">
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/main/examples/scrollable_sample.png?raw=true" width="60%" display="block" margin="auto">
 
 <details>
 <summary>Codeblock</summary>
@@ -145,7 +145,7 @@ left justified & center & right justified \\ \hline
 ```
 </details>
 
-<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/caffeine.png?raw=true" width="100%" display="block" margin="auto">
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/main/examples/caffeine.png?raw=true" width="100%" display="block" margin="auto">
 
 <details>
   <summary>Codeblock</summary>
@@ -164,7 +164,7 @@ Using codeblock type `latexsvg`
 Note the use of `\hspace` to add whitespace either side of the diagram to reduce the displayed size in obsidian.
 </details>
 
-<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/master/examples/lindenmayer.png?raw=true" width="80%" display="block" margin="auto">
+<img src="https://github.com/gboyd068/obsidian-swiftlatex-render/blob/main/examples/lindenmayer.png?raw=true" width="80%" display="block" margin="auto">
 
 <details>
   <summary>Codeblock</summary>
