@@ -9,11 +9,9 @@ Select the plugin from the community plugins in obsidian, or if you want to inst
 # Usage
 The content inside of the supported code blocks will be rendered using the given command. You can load any packages you need with `\usepackage{}`, it may take longer to compile a given codeblock for the first time as packages may need to be downloaded.
 
-The generated pdf's `<div>` parent has the class `block-language-latex`, so it can be styled using CSS snippets. For example, if you are using dark mode you can set `filter: invert(100%)` to invert the colours for a quick hack for dark themed diagrams.
-The generated svg's parent has the class `block-lanuage-latexsvg`.
-
 PdfTeX is used by default, or XeTeX can be selected in the settings for unicode support. 
 WARNING: XeTeX has not yet been updated for CTAN support, so will not work at the moment unless you supply packages yourself or have cached pdfs.
+
 ## Examples:
 
 <details>
@@ -232,6 +230,19 @@ By default the plugin will keep generated `.pdf` files in `.obsidian/swiftlatex-
 
 ### Packages
 The plugin also caches used packages in `.obsidian/swiftlatex-render-cache/package-cache`, loading the packages back into the virtual file system used by the WebAssembly on startup
+
+## Inverting Colours
+The plugin comes with different modes for inverting the colour of svg output
+
+`noinvert`:  No modification of colours
+
+`bwinvert`: Replace black on the diagram with your theme's text colour and white with your theme's background colour.
+
+`fullinvert`: Invert the hue of all colours in the diagram.
+
+The default mode can be set in the settings but you can also specify the behaviour on a per-diagram basis using the codeblock type e.g. `latexsvg-fullinvert`
+
+
 
 # Building from source
 1. follow the instructions in https://github.com/gboyd068/SwiftLaTeX to use Emscripten to build `swiftlatexpdftex.worker.js` within the `pdftex.wasm` directory and similarly for the other engine files
