@@ -215,8 +215,25 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		if (this.settings.compiler === CompilerType.XeTeX) {
 			this.pdfEngine = new PdfXeTeXEngine(this);
 		}
-
 		await this.pdfEngine.loadEngine();
+
+		// before loading the package cache, we need to see if the format file is available and create it if not
+		// if (!this.formatFileExists()) {
+		// 	console.log("I cannot find the format file in the package cache")
+		// 	let result = await this.pdfEngine.compileFormat();
+		// 	console.log("format compiled?")
+		// 	// write the result to the package cache
+		// 	const cacheFolderParentPath = path.join(this.getVaultPath(), this.app.vault.configDir, "swiftlatex-render-cache");
+		// 	if (!fs.existsSync(cacheFolderParentPath)) {
+		// 		fs.mkdirSync(cacheFolderParentPath);
+		// 	}
+		// 	this.packageCacheFolderPath = path.join(cacheFolderParentPath, "package-cache");
+		// 	if (!fs.existsSync(this.packageCacheFolderPath)) {
+		// 		fs.mkdirSync(this.packageCacheFolderPath);
+		// 	}
+		// 	fs.writeFileSync(path.join(this.packageCacheFolderPath, "swiftlatexpdftex.fmt"), new Uint8Array(result.pdf));
+		// }
+
 		await this.loadPackageCache();
 		this.addSyntaxHighlighting();
 		this.addRenderHooks();
