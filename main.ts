@@ -27,7 +27,11 @@ enum CompilerType {
 enum InvertMode {
 	NoInvert = "noinvert",
 	BWInvert = "bwinvert",
-	FullInvert = "fullinvert"
+	FullInvert = "fullinvert",
+}
+
+function assertUnreachable(x: never): never {
+    throw new Error("Didn't expect to get here");
 }
 
 function invertModeToDisplay(mode: InvertMode): string {
@@ -36,12 +40,13 @@ function invertModeToDisplay(mode: InvertMode): string {
 			return "None"
 		}
 		case InvertMode.BWInvert: {
-			return "Invert black and white using theme colors"
+			return "Invert black and white using theme"
 		}
 		case InvertMode.FullInvert: {
 			return "Invert all colors"
 		}
 	}
+	assertUnreachable(mode); // enforces all enum variants managed
 }
 
 interface SwiftlatexRenderSettings {
@@ -230,7 +235,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		if (!fs.existsSync(this.packageCacheFolderPath)) {
 			fs.mkdirSync(this.packageCacheFolderPath);
 		}
-		var formatFileName = "";
+		let formatFileName = "";
 		if (this.settings.compiler === CompilerType.PdfTeX) {
 			formatFileName = "swiftlatexpdftex.fmt";
 		}
@@ -248,7 +253,8 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 	}
 
 	addRenderHooks() {
-		let render_functions: { [key: string]: any } = {};
+		type CodeBlockRenderFunction = (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext)=>Promise<void>;
+		let render_functions: { [key: string]:  CodeBlockRenderFunction} = {};
 		for (const [, invert_mode] of Object.entries(InvertMode)) {
 			render_functions['latexsvg-'+invert_mode] = (source, el, ctx) =>
 						this.renderLatexToElement(source, el, ctx, true, invert_mode)
@@ -447,7 +453,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 				return this.addInvertFilter(svg);
 			}
 		}
-			
+		assertUnreachable(invert_mode);
 	}
 
 	async getPdfDimensions(
@@ -771,7 +777,7 @@ class SampleSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Default Invert Mode")
 			.setDesc(
-				"TODO"
+				"Default color invert mode for svg rendering, this can be overridden per block by using latexsvg-OPTION where options are {noinvert, bwinvert, fullinvert}."
 			)
 			.addDropdown((dropdown) => {
 				for (const [,invert_mode] of Object.entries(InvertMode)) {
