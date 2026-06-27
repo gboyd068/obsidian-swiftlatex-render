@@ -1,5 +1,4 @@
 .block-language-latex {
-    /* filter: invert(100%); */
     justify-content: center;
     align-items: center;
     display: block;
@@ -7,7 +6,6 @@
 }
 
 .block-language-latexsvg {
-    /* filter: invert(100%); */
     justify-content: center;
     align-items: center;
     display: block;
@@ -19,9 +17,46 @@
     height: 100%;
 }
 
+.block-language-latexsvg-noinvert {
+    justify-content: center;
+    align-items: center;
+    display: block;
+    width: 100%;
+}
+
+.block-language-latexsvg-noinvert svg {
+    width: 100%;
+    height: 100%;
+}
+
+
+.block-language-latexsvg-fullinvert {
+    filter: invert(1) hue-rotate(180deg);
+    justify-content: center;
+    align-items: center;
+    display: block;
+    width: 100%;
+}
+
+.block-language-latexsvg-fullinvert svg {
+    width: 100%;
+    height: 100%;
+}
+
+.block-language-latexsvg-bwinvert {
+    justify-content: center;
+    align-items: center;
+    display: block;
+    width: 100%;
+}
+
+.block-language-latexsvg-bwinvert svg {
+    width: 100%;
+    height: 100%;
+}
+
 
 .block-latex-error {
-    /* filter: invert(100%); */
     justify-content: center;
     display: block;
     width: 100%;

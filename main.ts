@@ -18,17 +18,24 @@ import { DvipdfmxEngine } from "./DvipdfmxEngine.js";
 import { PDFDocument } from "pdf-lib";
 const PdfToCairo = require("./pdftocairo.js");
 import { optimize } from "svgo";
+import { match } from "assert";
 
 enum CompilerType {
 	PdfTeX,
 	XeTeX,
 }
 
+enum InvertMode {
+	NoInvert = "noinvert",
+	BWInvert = "bwinvert",
+	FullInvert = "fullinvert"
+}
+
 interface SwiftlatexRenderSettings {
 	package_url: string;
 	timeout: number;
 	enableCache: boolean;
-	invertColorsInDarkMode: boolean;
+	invertDefault: InvertMode,
 	cache: Array<[string, Set<string>]>;
 	packageCache: Array<StringMap>;
 	onlyRenderInReadingMode: boolean;
@@ -39,7 +46,7 @@ const DEFAULT_SETTINGS: SwiftlatexRenderSettings = {
 	package_url: `https://texlive2.swiftlatex.com/`, // deprecated
 	timeout: 10000,
 	enableCache: true,
-	invertColorsInDarkMode: true,
+	invertDefault: InvertMode.BWInvert,
 	cache: [],
 	packageCache: [{}, {}, {}, {}],
 	onlyRenderInReadingMode: false,
@@ -164,12 +171,13 @@ const waitFor = async (condFunc: () => boolean) => {
 };
 
 export default class SwiftlatexRenderPlugin extends Plugin {
-	settings: SwiftlatexRenderSettings;
-	cacheFolderPath: string;
-	packageCacheFolderPath: string;
-	pluginFolderPath: string;
+	//@ts-ignore
+	settings: SwiftlatexRenderSettings; //@ts-ignore
+	cacheFolderPath: string; //@ts-ignore
+	packageCacheFolderPath: string;//@ts-ignore
+	pluginFolderPath: string;//@ts-ignore
 	pdfEngine: PdfXeTeXEngine;
-
+	//@ts-ignore
 	cache: Map<string, Set<string>>; // Key: md5 hash of latex source. Value: Set of file path names.
 
 	async onload() {
@@ -191,22 +199,6 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		}
 
 		await this.pdfEngine.loadEngine();
-		// before loading the package cache, we need to see if the format file is available and create it if not
-		// if (!this.formatFileExists()) {
-		// 	console.log("I cannot find the format file in the package cache")
-		// 	let result = await this.pdfEngine.compileFormat();
-		// 	console.log("format compiled?")
-		// 	// write the result to the package cache
-		// 	const cacheFolderParentPath = path.join(this.getVaultPath(), this.app.vault.configDir, "swiftlatex-render-cache");
-		// 	if (!fs.existsSync(cacheFolderParentPath)) {
-		// 		fs.mkdirSync(cacheFolderParentPath);
-		// 	}
-		// 	this.packageCacheFolderPath = path.join(cacheFolderParentPath, "package-cache");
-		// 	if (!fs.existsSync(this.packageCacheFolderPath)) {
-		// 		fs.mkdirSync(this.packageCacheFolderPath);
-		// 	}
-		// 	fs.writeFileSync(path.join(this.packageCacheFolderPath, "swiftlatexpdftex.fmt"), new Uint8Array(result.pdf));
-		// }
 		await this.loadPackageCache();
 		this.addSyntaxHighlighting();
 		this.addRenderHooks();
@@ -232,7 +224,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		if (this.settings.compiler === CompilerType.XeTeX) {
 			formatFileName = "swiftlatexxetex.fmt";
 		}
-		console.log(formatFileName);
+		// console.log(formatFileName);
 		try {
 			const packageFiles = fs.readdirSync(this.packageCacheFolderPath);
 			return packageFiles.contains(formatFileName);
@@ -243,32 +235,42 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 	}
 
 	addRenderHooks() {
+		let render_functions: { [key: string]: any } = {};
+		for (const [, invert_mode] of Object.entries(InvertMode)) {
+			render_functions['latexsvg-'+invert_mode] = (source, el, ctx) =>
+						this.renderLatexToElement(source, el, ctx, true, invert_mode)
+		}
+		render_functions["latexsvg"] = (source, el, ctx) =>
+						this.renderLatexToElement(source, el, ctx, true, this.settings.invertDefault)
+
 		if (this.settings.onlyRenderInReadingMode) {
 			const pdfBlockProcessor =
 				MarkdownPreviewRenderer.createCodeBlockPostProcessor(
 					"latex",
 					(source, el, ctx) =>
-						this.renderLatexToElement(source, el, ctx, false),
+						this.renderLatexToElement(source, el, ctx, false, InvertMode.NoInvert), // no invert effect for pdfs
 				);
 			MarkdownPreviewRenderer.registerPostProcessor(pdfBlockProcessor);
-			const svgBlockProcessor =
+			for (const [codeblocktag, render_func] of Object.entries(render_functions)) {
+				const svgBlockProcessor =
 				MarkdownPreviewRenderer.createCodeBlockPostProcessor(
-					"latexsvg",
-					(source, el, ctx) =>
-						this.renderLatexToElement(source, el, ctx, true),
+					codeblocktag,
+					render_func
 				);
-			MarkdownPreviewRenderer.registerPostProcessor(svgBlockProcessor);
+				MarkdownPreviewRenderer.registerPostProcessor(svgBlockProcessor);
+			}
 		} else {
 			this.registerMarkdownCodeBlockProcessor(
 				"latex",
 				(source, el, ctx) =>
-					this.renderLatexToElement(source, el, ctx, false),
+					this.renderLatexToElement(source, el, ctx, false, InvertMode.NoInvert), // no invert effect for pdfs
 			);
-			this.registerMarkdownCodeBlockProcessor(
-				"latexsvg",
-				(source, el, ctx) =>
-					this.renderLatexToElement(source, el, ctx, true),
-			);
+			for (const [codeblocktag, render_func] of Object.entries(render_functions)) {
+				this.registerMarkdownCodeBlockProcessor(
+					codeblocktag,
+					render_func
+				);
+			}
 		}
 	}
 
@@ -386,6 +388,14 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			mime: "text/x-latex",
 			mode: "stex",
 		});
+		for (const [, invert_mode] of Object.entries(InvertMode)) {
+			// @ts-ignore
+			window.CodeMirror.modeInfo.push({
+				mime: "text/x-latex",
+				mode: "stex",
+				name: "latexsvg-"+invert_mode,
+			});
+		}
 	}
 
 	formatLatexSource(source: string) {
@@ -411,11 +421,20 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		};
 	}
 
-	svgToHtml(svg: any) {
-		if (this.settings.invertColorsInDarkMode) {
-			svg = this.colorSVGinDarkMode(svg);
+	svgToHtml(svg: string, invert_mode: InvertMode): string {
+		// different invert modes may also have different css attached to them
+		switch(invert_mode) {
+			case InvertMode.NoInvert: {
+				return svg;
+			}
+			case InvertMode.BWInvert: {
+				return this.colorSVGinDarkMode(svg);
+			}
+			case InvertMode.FullInvert: {
+				return svg; // modifies css
+			}
 		}
-		return svg;
+			
 	}
 
 	async getPdfDimensions(
@@ -467,6 +486,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		el: HTMLElement,
 		ctx: MarkdownPostProcessorContext,
 		outputSVG: boolean = false,
+		invert_mode: InvertMode
 	) {
 		return new Promise<void>((resolve, reject) => {
 			let md5Hash = this.hashLatexSource(source);
@@ -483,7 +503,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 				let pdfData = fs.readFileSync(pdfPath);
 				if (outputSVG) {
 					this.pdfToSVG(pdfData).then((svg: string) => {
-						el.innerHTML = this.svgToHtml(svg);
+						el.innerHTML = this.svgToHtml(svg, invert_mode);
 					});
 				} else {
 					this.pdfToHtml(pdfData).then((htmlData) => {
@@ -502,7 +522,7 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 							this.addFileToCache(md5Hash, ctx.sourcePath);
 						if (outputSVG) {
 							this.pdfToSVG(r.pdf).then((svg: string) => {
-								el.innerHTML = this.svgToHtml(svg);
+								el.innerHTML = this.svgToHtml(svg, invert_mode);
 							});
 						} else {
 							this.pdfToHtml(r.pdf).then((htmlData) => {
@@ -720,20 +740,20 @@ class SampleSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
-			.setName("Invert dark colors in dark mode")
-			.setDesc(
-				"Invert dark colors in diagrams (e.g. axes, arrows) when in dark mode, so that they are visible.",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.invertColorsInDarkMode)
-					.onChange(async (value) => {
-						this.plugin.settings.invertColorsInDarkMode = value;
+		// new Setting(containerEl)
+		// 	.setName("Invert dark colors in dark mode")
+		// 	.setDesc(
+		// 		"Invert dark colors in diagrams (e.g. axes, arrows) when in dark mode, so that they are visible.",
+		// 	)
+		// 	.addToggle((toggle) =>
+		// 		toggle
+		// 			.setValue(this.plugin.settings.invertColorsInDarkMode)
+		// 			.onChange(async (value) => {
+		// 				this.plugin.settings.invertColorsInDarkMode = value;
 
-						await this.plugin.saveSettings();
-					}),
-			);
+		// 				await this.plugin.saveSettings();
+		// 			}),
+		// 	);
 
 		new Setting(containerEl)
 			.setName("Only render in Reading mode")
