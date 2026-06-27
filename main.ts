@@ -18,7 +18,6 @@ import { DvipdfmxEngine } from "./DvipdfmxEngine.js";
 import { PDFDocument } from "pdf-lib";
 const PdfToCairo = require("./pdftocairo.js");
 import { optimize } from "svgo";
-import { match } from "assert";
 
 enum CompilerType {
 	PdfTeX,
@@ -29,6 +28,20 @@ enum InvertMode {
 	NoInvert = "noinvert",
 	BWInvert = "bwinvert",
 	FullInvert = "fullinvert"
+}
+
+function invertModeToDisplay(mode: InvertMode): string {
+	switch (mode) {
+		case InvertMode.NoInvert: {
+			return "None"
+		}
+		case InvertMode.BWInvert: {
+			return "Invert black and white using theme colors"
+		}
+		case InvertMode.FullInvert: {
+			return "Invert all colors"
+		}
+	}
 }
 
 interface SwiftlatexRenderSettings {
@@ -425,13 +438,13 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 		// different invert modes may also have different css attached to them
 		switch(invert_mode) {
 			case InvertMode.NoInvert: {
-				return svg;
+				return svg; // no change
 			}
 			case InvertMode.BWInvert: {
 				return this.colorSVGinDarkMode(svg);
 			}
 			case InvertMode.FullInvert: {
-				return svg; // modifies css
+				return this.addInvertFilter(svg);
 			}
 		}
 			
@@ -479,6 +492,21 @@ export default class SwiftlatexRenderPlugin extends Plugin {
 			.replace(/rgb\(100%, 100%, 100%\)/g, "var(--background-primary)");
 
 		return svg;
+	}
+
+	addInvertFilter(svg: string): string {
+		const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+		const root = doc.documentElement;
+
+		const existing = root.getAttribute("style");
+		const filter = "filter: invert(1) hue-rotate(180deg);";
+
+		root.setAttribute(
+			"style",
+			existing ? `${existing.trim().replace(/;?$/, ";")} ${filter}` : filter
+		);
+
+		return new XMLSerializer().serializeToString(doc);
 	}
 
 	async renderLatexToElement(
@@ -740,20 +768,23 @@ class SampleSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		// new Setting(containerEl)
-		// 	.setName("Invert dark colors in dark mode")
-		// 	.setDesc(
-		// 		"Invert dark colors in diagrams (e.g. axes, arrows) when in dark mode, so that they are visible.",
-		// 	)
-		// 	.addToggle((toggle) =>
-		// 		toggle
-		// 			.setValue(this.plugin.settings.invertColorsInDarkMode)
-		// 			.onChange(async (value) => {
-		// 				this.plugin.settings.invertColorsInDarkMode = value;
-
-		// 				await this.plugin.saveSettings();
-		// 			}),
-		// 	);
+		new Setting(containerEl)
+			.setName("Default Invert Mode")
+			.setDesc(
+				"TODO"
+			)
+			.addDropdown((dropdown) => {
+				for (const [,invert_mode] of Object.entries(InvertMode)) {
+					dropdown.addOption(invert_mode, invertModeToDisplay(invert_mode))
+				}
+				dropdown.setValue(this.plugin.settings.invertDefault)
+				dropdown.onChange(async (value) => {
+					console.log(value)
+					this.plugin.settings.invertDefault = value as InvertMode;
+					console.log(this.plugin.settings.invertDefault)
+					await this.plugin.saveSettings();
+				});
+			});
 
 		new Setting(containerEl)
 			.setName("Only render in Reading mode")
@@ -795,3 +826,4 @@ class SampleSettingTab extends PluginSettingTab {
 			});
 	}
 }
+

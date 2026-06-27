@@ -31,7 +31,6 @@
 
 
 .block-language-latexsvg-fullinvert {
-    filter: invert(1) hue-rotate(180deg);
     justify-content: center;
     align-items: center;
     display: block;
